@@ -275,6 +275,51 @@
             font-size: 16px;
             text-align: center;
         }
+            @media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .sidebar {
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 12px;
+        gap: 8px;
+        border-right: none;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .sidebar-title {
+        display: none; /* можно убрать заголовок для экономии места */
+    }
+
+    .agent-card {
+        min-width: 120px;
+        flex-shrink: 0;
+    }
+
+    .main-area {
+        height: calc(100vh - 80px); /* приблизительно под высоту сайдбара */
+    }
+
+    .chat-area {
+        padding: 12px;
+    }
+
+    .input-area {
+        padding: 12px;
+    }
+
+    .message {
+        max-width: 100%;
+    }
+}
+
     </style>
 </head>
 <body>
