@@ -1,6 +1,3 @@
-Ниже твой код с добавленным логированием всех запросов и ответов GigaChat в отдельный файл `gigachat.log` через стандартный модуль `logging`.[1]
-
-```python
 import os
 import uuid
 from datetime import datetime, timedelta
@@ -45,6 +42,7 @@ GIGA_AUTH_KEY = os.getenv("GIGACHAT_AUTH_KEY")
 if not GIGA_AUTH_KEY:
     raise RuntimeError("Не задана переменная окружения GIGACHAT_AUTH_KEY")
 
+# Кэш токена в памяти процесса
 _access_token: str | None = None
 _access_exp: datetime | None = None
 
@@ -173,9 +171,10 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
 
 app = FastAPI()
 
+# CORS, чтобы фронт с любого origin мог дергать бэк
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # для продакшена лучше сузить
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -211,8 +210,3 @@ async def board_chat(req: ChatRequest):
 
     logger.info("Outgoing /api/board replies: %s", replies)
     return replies
-```
-
-Этот вариант пишет все запросы/ответы авторизации и чата, а также входящие/исходящие данные FastAPI в `logs/gigachat.log`, с ротацией файлов до 3 резервных копий по 5 МБ.[1]
-
-[1](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/62409759/554be423-0704-4d8e-83d8-b0432b149f5e/paste.txt)
