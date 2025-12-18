@@ -275,51 +275,51 @@
             font-size: 16px;
             text-align: center;
         }
-            @media (max-width: 768px) {
-    .container {
-        flex-direction: column;
-        height: auto;
-        min-height: 100vh;
-    }
 
-    .sidebar {
-        width: 100%;
-        display: flex;
-        flex-direction: row;
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding: 12px;
-        gap: 8px;
-        border-right: none;
-        border-bottom: 1px solid var(--color-border);
-    }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+                min-height: 100vh;
+            }
 
-    .sidebar-title {
-        display: none; /* можно убрать заголовок для экономии места */
-    }
+            .sidebar {
+                width: 100%;
+                display: flex;
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding: 12px;
+                gap: 8px;
+                border-right: none;
+                border-bottom: 1px solid var(--color-border);
+            }
 
-    .agent-card {
-        min-width: 120px;
-        flex-shrink: 0;
-    }
+            .sidebar-title {
+                display: none;
+            }
 
-    .main-area {
-        height: calc(100vh - 80px); /* приблизительно под высоту сайдбара */
-    }
+            .agent-card {
+                min-width: 120px;
+                flex-shrink: 0;
+            }
 
-    .chat-area {
-        padding: 12px;
-    }
+            .main-area {
+                height: calc(100vh - 80px);
+            }
 
-    .input-area {
-        padding: 12px;
-    }
+            .chat-area {
+                padding: 12px;
+            }
 
-    .message {
-        max-width: 100%;
-    }
-}
+            .input-area {
+                padding: 12px;
+            }
 
+            .message {
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -381,27 +381,22 @@
             ceo: {
                 name: 'CEO',
                 role: 'Стратегия и видение',
-                systemPrompt: 'You are the CEO. Your role is to see the big picture, long-term vision, and balance risk vs opportunity. Give short, decisive assessments focused on strategic fit.'
             },
             cfo: {
                 name: 'CFO',
                 role: 'Финансы и риски',
-                systemPrompt: 'You are the CFO. Your role is to think in numbers: budget, ROI, risk. Give a clear financial assessment: cost, payback period, and main risks.'
             },
             cpo: {
                 name: 'CPO',
                 role: 'Продукт и UX',
-                systemPrompt: 'You are the Chief Product Officer. Focus on user value, feasibility, UX, and roadmap impact. Be practical and user-centric.'
             },
             marketing: {
                 name: 'Маркетинг',
                 role: 'Маркетинг',
-                systemPrompt: 'You are the Head of Marketing. Think about market, positioning, channels, and target audience. Focus on go-to-market and differentiation.'
             },
             skeptic: {
                 name: 'Скептик',
                 role: 'Критический советник',
-                systemPrompt: 'You are an experienced investor and advisor. Your role is to find weaknesses, risks, and hidden assumptions. Be critical and ask hard questions.'
             }
         };
 
@@ -507,7 +502,13 @@
             };
 
             try {
-                const response = await fetch("http://45.151.31.180:8000/api/board", {
+                // Если фронт открывается с того же хоста и порта, где бэк,
+                // достаточно относительного пути `/api/board`.
+                // Если HTML открываешь с другого домена, поменяй на полный URL:
+                // const url = "http://45.151.31.180:8000/api/board";
+                const url = "/api/board";
+
+                const response = await fetch(url, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -516,7 +517,8 @@
                 });
 
                 if (!response.ok) {
-                    console.error("Backend error:", response.status, response.statusText);
+                    const text = await response.text().catch(() => "");
+                    console.error("Backend error:", response.status, response.statusText, text);
                     const msg = "Ошибка на стороне сервера. Попробуйте ещё раз.";
                     result.ceo = msg;
                     result.cfo = msg;
@@ -527,6 +529,8 @@
                 }
 
                 const data = await response.json();
+                console.log("Backend data:", data);
+
                 for (const item of data) {
                     if (result.hasOwnProperty(item.agent)) {
                         result[item.agent] = item.text;
