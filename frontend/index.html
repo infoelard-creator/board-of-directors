@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Board of Directors</title>
+    <title>Совет директоров</title>
     <style>
         :root {
             --color-primary: #208090;
@@ -281,52 +281,52 @@
     <div class="container">
         <!-- Sidebar with agents -->
         <div class="sidebar">
-            <div class="sidebar-title">Board of Directors</div>
+            <div class="sidebar-title">Совет директоров</div>
             
             <div class="agent-card ceo" data-agent="ceo">
                 <div class="agent-name">CEO</div>
-                <div class="agent-role">Strategy and vision</div>
+                <div class="agent-role">Стратегия и видение</div>
             </div>
 
             <div class="agent-card cfo" data-agent="cfo">
                 <div class="agent-name">CFO</div>
-                <div class="agent-role">Finance and risk</div>
+                <div class="agent-role">Финансы и риски</div>
             </div>
 
             <div class="agent-card cpo" data-agent="cpo">
                 <div class="agent-name">CPO</div>
-                <div class="agent-role">Product and UX</div>
+                <div class="agent-role">Продукт и UX</div>
             </div>
 
             <div class="agent-card marketing" data-agent="marketing">
-                <div class="agent-name">Marketing</div>
-                <div class="agent-role">Market and positioning</div>
+                <div class="agent-name">Маркетинг</div>
+                <div class="agent-role">Рынок и позиционирование</div>
             </div>
 
             <div class="agent-card skeptic" data-agent="skeptic">
-                <div class="agent-name">Skeptic</div>
-                <div class="agent-role">Risks and objections</div>
+                <div class="agent-name">Скептик</div>
+                <div class="agent-role">Риски и возражения</div>
             </div>
         </div>
 
         <!-- Main chat area -->
         <div class="main-area">
             <div class="header">
-                <h1 class="header-title">Board meeting</h1>
+                <h1 class="header-title">Заседание совета</h1>
             </div>
 
             <div class="chat-area" id="chatArea">
-                <div class="empty-state">Start a discussion — type a topic or question</div>
+                <div class="empty-state">Начните обсуждение — опишите идею или вопрос для совета</div>
             </div>
 
             <div class="input-area">
                 <textarea 
                     class="input-field" 
                     id="messageInput" 
-                    placeholder="Drop an idea or task for the board to discuss..."
+                    placeholder="Опишите идею, задачу или проблему для обсуждения..."
                     rows="1"
                 ></textarea>
-                <button class="send-btn" id="sendBtn">Send</button>
+                <button class="send-btn" id="sendBtn">Отправить</button>
             </div>
         </div>
     </div>
@@ -335,27 +335,27 @@
         const agents = {
             ceo: {
                 name: 'CEO',
-                role: 'Strategy and vision',
+                role: 'Стратегия и видение',
                 systemPrompt: 'You are the CEO. Your role is to see the big picture, long-term vision, and balance risk vs opportunity. Give short, decisive assessments focused on strategic fit.'
             },
             cfo: {
                 name: 'CFO',
-                role: 'Finance',
+                role: 'Финансы и риски',
                 systemPrompt: 'You are the CFO. Your role is to think in numbers: budget, ROI, risk. Give a clear financial assessment: cost, payback period, and main risks.'
             },
             cpo: {
                 name: 'CPO',
-                role: 'Product',
+                role: 'Продукт и UX',
                 systemPrompt: 'You are the Chief Product Officer. Focus on user value, feasibility, UX, and roadmap impact. Be practical and user-centric.'
             },
             marketing: {
-                name: 'Marketing',
-                role: 'Marketing',
+                name: 'Маркетинг',
+                role: 'Маркетинг',
                 systemPrompt: 'You are the Head of Marketing. Think about market, positioning, channels, and target audience. Focus on go-to-market and differentiation.'
             },
             skeptic: {
-                name: 'Skeptic',
-                role: 'Critical advisor',
+                name: 'Скептик',
+                role: 'Критический советник',
                 systemPrompt: 'You are an experienced investor and advisor. Your role is to find weaknesses, risks, and hidden assumptions. Be critical and ask hard questions.'
             }
         };
@@ -424,20 +424,19 @@
             sendBtn.disabled = true;
             const loadingEl = document.createElement('div');
             loadingEl.className = 'loading';
-            loadingEl.innerHTML = '<div class="spinner"></div>The board is discussing...';
+            loadingEl.innerHTML = '<div class="spinner"></div>Совет обсуждает ваш вопрос...';
             chatArea.appendChild(loadingEl);
             chatArea.scrollTop = chatArea.scrollHeight;
 
             try {
                 const agentOrder = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic'];
 
-                // Call backend once and reuse responses
                 const backendResponses = await callBackend(text);
 
                 loadingEl.remove();
 
                 for (const agentType of agentOrder) {
-                    const response = backendResponses[agentType] || "No reply from this agent.";
+                    const response = backendResponses[agentType] || 'Нет ответа от этого участника.';
                     addMessage(response, 'agent', agentType);
                     await new Promise(r => setTimeout(r, 300));
                 }
@@ -445,7 +444,7 @@
             } catch (error) {
                 console.error('Error:', error);
                 loadingEl.remove();
-                addMessage('Error while processing. Please try again.', 'agent', 'skeptic');
+                addMessage('Произошла ошибка при обработке. Попробуйте ещё раз.', 'agent', 'skeptic');
             } finally {
                 isLoading = false;
                 sendBtn.disabled = false;
@@ -473,11 +472,12 @@
 
                 if (!response.ok) {
                     console.error("Backend error:", response.status, response.statusText);
-                    result.ceo = "Backend error. Please try again.";
-                    result.cfo = "Backend error.";
-                    result.cpo = "Backend error.";
-                    result.marketing = "Backend error.";
-                    result.skeptic = "Backend error.";
+                    const msg = "Ошибка на стороне сервера. Попробуйте ещё раз.";
+                    result.ceo = msg;
+                    result.cfo = msg;
+                    result.cpo = msg;
+                    result.marketing = msg;
+                    result.skeptic = msg;
                     return result;
                 }
 
@@ -490,11 +490,12 @@
 
             } catch (err) {
                 console.error("Request failed:", err);
-                result.ceo = "Request failed. Please try again.";
-                result.cfo = "Request failed.";
-                result.cpo = "Request failed.";
-                result.marketing = "Request failed.";
-                result.skeptic = "Request failed.";
+                const msg = "Не удалось связаться с сервером. Попробуйте ещё раз.";
+                result.ceo = msg;
+                result.cfo = msg;
+                result.cpo = msg;
+                result.marketing = msg;
+                result.skeptic = msg;
             }
 
             return result;
