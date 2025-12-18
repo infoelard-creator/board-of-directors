@@ -1,0 +1,38 @@
+from fastapi import FastAPI
+from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# Разрешаем запросы с фронта (браузера)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # на стенде можно так, потом сузим
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class ChatRequest(BaseModel):
+    message: str
+
+class AgentReply(BaseModel):
+    agent: str
+    text: str
+
+@app.post("/api/board", response_model=list[AgentReply])
+async def board_chat(req: ChatRequest):
+    user_msg = req.message
+
+    # Пока просто заглушки вместо LLM
+    replies = [
+        {"agent": "ceo", "text": f"CEO: стратегический взгляд на: {user_msg}"},
+        {"agent": "cfo", "text": f"CFO: финансовая оценка идеи: {user_msg}"},
+        {"agent": "cpo", "text": f"CPO: продуктовый взгляд на: {user_msg}"},
+        {"agent": "marketing", "text": f"Marketing: как это продать: {user_msg}"},
+        {"agent": "skeptic", "text": f"Скептик: что может пойти не так в: {user_msg}"},
+    ]
+    return replies
+ч
+
+
