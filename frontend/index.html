@@ -1,212 +1,554 @@
-import os
-import uuid
-from datetime import datetime, timedelta
-from typing import List
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Совет директоров</title>
+    <style>
+        :root {
+            --color-primary: #208090;
+            --color-secondary: #f5f5f5;
+            --color-text: #1f2121;
+            --color-border: #ddd;
+            --color-ceo: #1e3a5f;
+            --color-cfo: #2d5a3d;
+            --color-cpo: #5a3d2d;
+            --color-marketing: #3d2d5a;
+            --color-skeptic: #8b4513;
+        }
 
-import requests
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import logging
-from logging.handlers import RotatingFileHandler
+        * {
+            box-sizing: border-box;
+        }
 
-# ===== Логирование =====
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f9f9f9;
+            color: var(--color-text);
+        }
 
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
+        .container {
+            display: flex;
+            height: 100vh;
+            gap: 0;
+        }
 
-logger = logging.getLogger("gigachat")
-logger.setLevel(logging.INFO)
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid var(--color-border);
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
 
-log_path = os.path.join(LOG_DIR, "gigachat.log")
-handler = RotatingFileHandler(
-    log_path,
-    maxBytes=5 * 1024 * 1024,  # 5 MB
-    backupCount=3,
-    encoding="utf-8",
-)
-formatter = logging.Formatter(
-    "%(asctime)s [%(levelname)s] %(name)s - %(message)s"
-)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+        .sidebar-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 8px;
+        }
 
-# ===== Настройки GigaChat =====
+        .agent-card {
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid;
+            cursor: pointer;
+            transition: all 200ms;
+            font-size: 13px;
+        }
 
-GIGA_AUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-GIGA_API_BASE = "https://gigachat.devices.sberbank.ru"
-GIGA_SCOPE = "GIGACHAT_API_PERS"
+        .agent-card:hover {
+            transform: translateX(4px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
 
-GIGA_AUTH_KEY = os.getenv("GIGACHAT_AUTH_KEY")
+        .agent-card.ceo {
+            border-left-color: var(--color-ceo);
+            background: rgba(30, 58, 95, 0.08);
+        }
 
-if not GIGA_AUTH_KEY:
-    raise RuntimeError("Не задана переменная окружения GIGACHAT_AUTH_KEY")
+        .agent-card.cfo {
+            border-left-color: var(--color-cfo);
+            background: rgba(45, 90, 61, 0.08);
+        }
 
-# Кэш токена в памяти процесса
-_access_token: str | None = None
-_access_exp: datetime | None = None
+        .agent-card.cpo {
+            border-left-color: var(--color-cpo);
+            background: rgba(90, 61, 45, 0.08);
+        }
 
+        .agent-card.marketing {
+            border-left-color: var(--color-marketing);
+            background: rgba(61, 45, 90, 0.08);
+        }
 
-def get_gigachat_token() -> str:
-    """
-    Получаем и кэшируем access token GigaChat.
-    Логируем запрос и ответ.
-    """
-    global _access_token, _access_exp
+        .agent-card.skeptic {
+            border-left-color: var(--color-skeptic);
+            background: rgba(139, 69, 19, 0.08);
+        }
 
-    if _access_token and _access_exp and datetime.utcnow() < _access_exp:
-        return _access_token
+        .agent-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
 
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept": "application/json",
-        "RqUID": str(uuid.uuid4()),
-        "Authorization": f"Basic {GIGA_AUTH_KEY}",
-    }
-    data = {"scope": GIGA_SCOPE}
+        .agent-role {
+            font-size: 12px;
+            color: #666;
+        }
 
-    logger.info(
-        "Auth request -> %s | headers=%s | data=%s",
-        GIGA_AUTH_URL,
-        {k: (v if k != "Authorization" else "***hidden***") for k, v in headers.items()},
-        data,
-    )
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
 
-    resp = requests.post(GIGA_AUTH_URL, headers=headers, data=data, timeout=10)
+        .header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--color-border);
+            background: white;
+        }
 
-    logger.info(
-        "Auth response <- %s | status=%s | body=%s",
-        GIGA_AUTH_URL,
-        resp.status_code,
-        resp.text,
-    )
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+        }
 
-    resp.raise_for_status()
-    j = resp.json()
-    _access_token = j["access_token"]
-    _access_exp = datetime.utcnow() + timedelta(minutes=25)
-    return _access_token
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
 
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 80%;
+            word-wrap: break-word;
+            animation: slideIn 300ms ease-out;
+        }
 
-# ===== Настройки ролей совета =====
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
-AGENT_SYSTEM_PROMPTS = {
-    "ceo": (
-        "Ты CEO. Смотри на стратегию, долгосрочное видение и баланс риска и возможностей. "
-        "Отвечай кратко, структурно и решительно, 3–6 предложений."
-    ),
-    "cfo": (
-        "Ты CFO. Думай в терминах бюджета, ROI, денежных потоков и рисков. "
-        "Дай финансовую оценку: порядок затрат, окупаемость, ключевые риски, 3–6 предложений."
-    ),
-    "cpo": (
-        "Ты CPO. Фокус на ценности для пользователя, UX, реализуемости и влиянии на roadmap. "
-        "Дай практичный продуктовый взгляд, 3–6 предложений."
-    ),
-    "marketing": (
-        "Ты директор по маркетингу. Фокус на рынке, позиционировании, целевой аудитории, каналах привлечения. "
-        "Опиши go-to-market и дифференциацию, 3–6 предложений."
-    ),
-    "skeptic": (
-        "Ты скептический инвестор и советник. Ищешь слабые места, риски и скрытые допущения. "
-        "Будь критичен, задай неудобные вопросы, 3–6 предложений."
-    ),
-}
+        .message.user {
+            align-self: flex-end;
+            background: var(--color-primary);
+            color: white;
+            margin-right: 0;
+        }
 
+        .message.agent {
+            align-self: flex-start;
+            background: var(--color-secondary);
+            border: 1px solid var(--color-border);
+            position: relative;
+        }
 
-def ask_gigachat(agent: str, user_msg: str) -> str:
-    """
-    Вызывает GigaChat с нужным system-prompt для конкретного агента.
-    Логирует запрос и ответ к /chat/completions.
-    """
-    token = get_gigachat_token()
-    system_prompt = AGENT_SYSTEM_PROMPTS[agent]
+        .message-header {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
 
-    payload = {
-        "model": "GigaChat",  # при необходимости подставить конкретную модель
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_msg},
-        ],
-        "stream": False,
-    }
+        .message.agent .message-header {
+            color: var(--color-primary);
+        }
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
+        .agent-badge {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
 
-    url = f"{GIGA_API_BASE}/api/v1/chat/completions"
+        .message.agent.ceo .message-header { color: var(--color-ceo); }
+        .message.agent.cfo .message-header { color: var(--color-cfo); }
+        .message.agent.cpo .message-header { color: var(--color-cpo); }
+        .message.agent.marketing .message-header { color: var(--color-marketing); }
+        .message.agent.skeptic .message-header { color: var(--color-skeptic); }
 
-    logger.info(
-        "Chat request -> %s | agent=%s | headers=%s | payload=%s",
-        url,
-        agent,
-        {k: (v if k != "Authorization" else "***hidden***") for k, v in headers.items()},
-        payload,
-    )
+        .message-content {
+            font-size: 14px;
+            line-height: 1.5;
+        }
 
-    resp = requests.post(
-        url,
-        headers=headers,
-        json=payload,
-        timeout=60,
-    )
+        .input-area {
+            padding: 20px 24px;
+            border-top: 1px solid var(--color-border);
+            display: flex;
+            gap: 12px;
+            background: white;
+        }
 
-    logger.info(
-        "Chat response <- %s | agent=%s | status=%s | body=%s",
-        url,
-        agent,
-        resp.status_code,
-        resp.text,
-    )
+        .input-field {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            max-height: 100px;
+        }
 
-    resp.raise_for_status()
-    j = resp.json()
-    return j["choices"][0]["message"]["content"].strip()
+        .input-field:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(32, 128, 144, 0.1);
+        }
 
+        .send-btn {
+            padding: 12px 24px;
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 200ms;
+            height: 44px;
+            display: flex;
+            align-items: center;
+        }
 
-# ===== FastAPI-приложение =====
+        .send-btn:hover {
+            background: #1a6472;
+        }
 
-app = FastAPI()
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
 
-# CORS, чтобы фронт с любого origin мог дергать бэк
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # для продакшена лучше сузить
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #666;
+            font-size: 13px;
+        }
 
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #ddd;
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
 
-class ChatRequest(BaseModel):
-    message: str
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
 
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+            font-size: 16px;
+            text-align: center;
+        }
 
-class AgentReply(BaseModel):
-    agent: str
-    text: str
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+                min-height: 100vh;
+            }
 
+            .sidebar {
+                width: 100%;
+                display: flex;
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding: 12px;
+                gap: 8px;
+                border-right: none;
+                border-bottom: 1px solid var(--color-border);
+            }
 
-@app.post("/api/board", response_model=List[AgentReply])
-async def board_chat(req: ChatRequest):
-    """
-    Принимает сообщение пользователя и возвращает список ответов от агентов:
-    ceo, cfo, cpo, marketing, skeptic.
-    """
-    user_msg = req.message
-    logger.info("Incoming /api/board message: %s", user_msg)
+            .sidebar-title {
+                display: none;
+            }
 
-    replies: list[AgentReply] = []
-    for agent in ["ceo", "cfo", "cpo", "marketing", "skeptic"]:
-        try:
-            text = ask_gigachat(agent, user_msg)
-        except Exception as e:
-            logger.exception("Error while calling GigaChat for agent=%s", agent)
-            text = f"Ошибка при обращении к GigaChat для {agent}: {e}"
-        replies.append(AgentReply(agent=agent, text=text))
+            .agent-card {
+                min-width: 120px;
+                flex-shrink: 0;
+            }
 
-    logger.info("Outgoing /api/board replies: %s", replies)
-    return replies
+            .main-area {
+                height: calc(100vh - 80px);
+            }
+
+            .chat-area {
+                padding: 12px;
+            }
+
+            .input-area {
+                padding: 12px;
+            }
+
+            .message {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar with agents -->
+        <div class="sidebar">
+            <div class="sidebar-title">Совет директоров</div>
+            
+            <div class="agent-card ceo" data-agent="ceo">
+                <div class="agent-name">CEO</div>
+                <div class="agent-role">Стратегия и видение</div>
+            </div>
+
+            <div class="agent-card cfo" data-agent="cfo">
+                <div class="agent-name">CFO</div>
+                <div class="agent-role">Финансы и риски</div>
+            </div>
+
+            <div class="agent-card cpo" data-agent="cpo">
+                <div class="agent-name">CPO</div>
+                <div class="agent-role">Продукт и UX</div>
+            </div>
+
+            <div class="agent-card marketing" data-agent="marketing">
+                <div class="agent-name">Маркетинг</div>
+                <div class="agent-role">Рынок и позиционирование</div>
+            </div>
+
+            <div class="agent-card skeptic" data-agent="skeptic">
+                <div class="agent-name">Скептик</div>
+                <div class="agent-role">Риски и возражения</div>
+            </div>
+        </div>
+
+        <!-- Main chat area -->
+        <div class="main-area">
+            <div class="header">
+                <h1 class="header-title">Заседание совета</h1>
+            </div>
+
+            <div class="chat-area" id="chatArea">
+                <div class="empty-state">Начните обсуждение — опишите идею или вопрос для совета</div>
+            </div>
+
+            <div class="input-area">
+                <textarea 
+                    class="input-field" 
+                    id="messageInput" 
+                    placeholder="Опишите идею, задачу или проблему для обсуждения..."
+                    rows="1"
+                ></textarea>
+                <button class="send-btn" id="sendBtn">Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const agents = {
+            ceo: {
+                name: 'CEO',
+                role: 'Стратегия и видение',
+            },
+            cfo: {
+                name: 'CFO',
+                role: 'Финансы и риски',
+            },
+            cpo: {
+                name: 'CPO',
+                role: 'Продукт и UX',
+            },
+            marketing: {
+                name: 'Маркетинг',
+                role: 'Маркетинг',
+            },
+            skeptic: {
+                name: 'Скептик',
+                role: 'Критический советник',
+            }
+        };
+
+        const chatArea = document.getElementById('chatArea');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        let isLoading = false;
+
+        // Auto-resize textarea
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+
+        // Send message
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function addMessage(text, sender = 'user', agentType = null) {
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${sender}`;
+            if (agentType) messageEl.classList.add(agentType);
+
+            let content = text;
+            if (sender === 'agent') {
+                const agent = agents[agentType];
+                content = `<div class="message-header"><span class="agent-badge" style="background: var(--color-${agentType})"></span>${agent.name}</div><div class="message-content">${escapeHtml(text)}</div>`;
+            } else {
+                content = `<div class="message-content">${escapeHtml(text)}</div>`;
+            }
+
+            messageEl.innerHTML = content;
+            chatArea.appendChild(messageEl);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || isLoading) return;
+
+            // Clear input
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            
+            // Clear empty state
+            const emptyState = chatArea.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+
+            // Add user message
+            addMessage(text, 'user');
+
+            // Set loading state
+            isLoading = true;
+            sendBtn.disabled = true;
+            const loadingEl = document.createElement('div');
+            loadingEl.className = 'loading';
+            loadingEl.innerHTML = '<div class="spinner"></div>Совет обсуждает ваш вопрос...';
+            chatArea.appendChild(loadingEl);
+            chatArea.scrollTop = chatArea.scrollHeight;
+
+            try {
+                const agentOrder = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic'];
+
+                const backendResponses = await callBackend(text);
+
+                loadingEl.remove();
+
+                for (const agentType of agentOrder) {
+                    const response = backendResponses[agentType] || 'Нет ответа от этого участника.';
+                    addMessage(response, 'agent', agentType);
+                    await new Promise(r => setTimeout(r, 300));
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                loadingEl.remove();
+                addMessage('Произошла ошибка при обработке. Попробуйте ещё раз.', 'agent', 'skeptic');
+            } finally {
+                isLoading = false;
+                sendBtn.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        async function callBackend(userMessage) {
+            const result = {
+                ceo: null,
+                cfo: null,
+                cpo: null,
+                marketing: null,
+                skeptic: null
+            };
+
+            try {
+                // Если фронт открывается с того же хоста и порта, где бэк,
+                // достаточно относительного пути `/api/board`.
+                // Если HTML открываешь с другого домена, поменяй на полный URL:
+                // const url = "http://45.151.31.180:8000/api/board";
+                const url = "/api/board";
+
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ message: userMessage })
+                });
+
+                if (!response.ok) {
+                    const text = await response.text().catch(() => "");
+                    console.error("Backend error:", response.status, response.statusText, text);
+                    const msg = "Ошибка на стороне сервера. Попробуйте ещё раз.";
+                    result.ceo = msg;
+                    result.cfo = msg;
+                    result.cpo = msg;
+                    result.marketing = msg;
+                    result.skeptic = msg;
+                    return result;
+                }
+
+                const data = await response.json();
+                console.log("Backend data:", data);
+
+                for (const item of data) {
+                    if (result.hasOwnProperty(item.agent)) {
+                        result[item.agent] = item.text;
+                    }
+                }
+
+            } catch (err) {
+                console.error("Request failed:", err);
+                const msg = "Не удалось связаться с сервером. Попробуйте ещё раз.";
+                result.ceo = msg;
+                result.cfo = msg;
+                result.cpo = msg;
+                result.marketing = msg;
+                result.skeptic = msg;
+            }
+
+            return result;
+        }
+    </script>
+</body>
+</html>
