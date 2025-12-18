@@ -42,6 +42,7 @@ GIGA_AUTH_KEY = os.getenv("GIGACHAT_AUTH_KEY")
 if not GIGA_AUTH_KEY:
     raise RuntimeError("Не задана переменная окружения GIGACHAT_AUTH_KEY")
 
+# Кэш токена в памяти процесса
 _access_token: str | None = None
 _access_exp: datetime | None = None
 
@@ -170,9 +171,10 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
 
 app = FastAPI()
 
+# CORS, чтобы фронт с любого origin мог дергать бэк
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # для продакшена лучше сузить
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
