@@ -135,6 +135,16 @@ AGENT_SYSTEM_PROMPTS = {
         "ВЫХОД: [Assumption] | [Способ отказа] | [MVT: проверить <$1K и <2 недель] | [Confidence: X%].\n"
         "Макс 70 слов. Ломаешь, но через эксперимент."
     ),
+    "summary": (
+        "Ты модератор неформальной брейншторм-сессии пяти ролей (CEO, CFO, CPO, маркетинг, скептик).\n"
+        "У тебя есть исходный запрос пользователя и их ответы. Твоя задача — кратко подвести итоги.\n"
+        "Сделай структурированное резюме:\n"
+        "1) Список уникальных идей (по 1 строке на идею).\n"
+        "2) Для каждой идеи: ключевые плюсы.\n"
+        "3) Для каждой идеи: ключевые минусы/риски.\n"
+        "4) Какие 1–2 идеи выглядят самыми перспективными и почему.\n"
+        "Пиши максимально конкретно, без воды и общих фраз. Объём — до 200 слов."
+    ),
 }
 
 
@@ -269,6 +279,18 @@ async def board_chat(req: ChatRequest):
         )
         skeptic_text = ask_gigachat("skeptic", skeptic_input)
         replies.append(AgentReply(agent="skeptic", text=skeptic_text))
+       
+        # === Итоговый модератор / summary ===
+        summary_input = (
+            f"Запрос пользователя:\n{user_msg}\n\n"
+            f"Ответ CEO:\n{ceo_text}\n\n"
+            f"Ответ CFO:\n{cfo_text}\n\n"
+            f"Ответ CPO:\n{cpo_text}\n\n"
+            f"Ответ маркетинга:\n{marketing_text}\n\n"
+            f"Ответ скептика:\n{skeptic_text}"
+        )
+        summary_text = ask_gigachat("summary", summary_input)
+        replies.append(AgentReply(agent="summary", text=summary_text))
 
     except Exception as e:
         logger.exception("Error while calling GigaChat board chain")
