@@ -128,7 +128,7 @@ AGENT_SYSTEM_PROMPTS = {
     ),
     "summary": (
         "Ты модератор неформальной брейншторм-сессии пяти ролей (CEO, CFO, CPO, маркетинг, скептик).\n"
-        "У тебя есть исходный запрос пользователя и их ответы. Твоя задача — кратко подвести итоги.\n"
+        "У тебя есть история обсуждения и ответы ролей. Твоя задача — кратко подвести итоги.\n"
         "Сделай структурированное резюме:\n"
         "1) Список уникальных идей (по 1 строке на идею).\n"
         "2) Для каждой идеи: ключевые плюсы.\n"
@@ -219,6 +219,14 @@ class SingleAgentReply(BaseModel):
     text: str
 
 
+class SummaryRequest(BaseModel):
+    history: list[str] | None = None
+
+
+class SummaryReply(BaseModel):
+    text: str
+
+
 # ===== Основная цепочка совета директоров =====
 
 @app.post("/api/board", response_model=List[AgentReply])
@@ -245,12 +253,10 @@ async def board_chat(req: ChatRequest):
     ctx: dict[str, str] = {}
 
     try:
-        # общий способ собрать вход для агента
         def build_agent_input(agent_name: str) -> str:
             parts: list[str] = []
 
             if mode == "comment":
-                # комментарий пользователя как приоритетный блок
                 parts.append(f"Текущий комментарий пользователя:\n{user_msg}")
                 if req.history:
                     history_text = "\n".join(req.history[-20:])
@@ -261,10 +267,8 @@ async def board_chat(req: ChatRequest):
                     "Дай ответ на комментарий, учитывая контекст выше, но опираясь прежде всего на текущий комментарий."
                 )
             else:
-                # первый раунд: обычный запрос
                 parts.append(f"Запрос пользователя:\n{user_msg}")
 
-            # для всех раундов можно добавлять ответы других агентов (если они уже есть)
             if ctx:
                 for prev in order:
                     if prev in ctx:
@@ -272,14 +276,12 @@ async def board_chat(req: ChatRequest):
 
             return "\n\n".join(parts)
 
-        # последовательная цепочка по активным агентам
         for agent in active_ordered:
             agent_input = build_agent_input(agent)
             text = ask_gigachat(agent, agent_input)
             ctx[agent] = text
             replies.append(AgentReply(agent=agent, text=text))
 
-        # summary только в initial‑раунде
         if mode == "initial":
             summary_parts = [f"Запрос пользователя:\n{user_msg}"]
             for agent in order:
@@ -309,10 +311,6 @@ async def board_chat(req: ChatRequest):
 
 @app.post("/api/agent", response_model=SingleAgentReply)
 async def single_agent(req: SingleAgentRequest):
-    """
-    Перезапуск одной роли (ceo/cfo/.../skeptic/summary) по истории общения.
-    История обрезается до 20 последних записей.
-    """
     logger.info(
         "Incoming /api/agent: agent=%s | message=%s",
         req.agent,
@@ -346,3 +344,42 @@ async def single_agent(req: SingleAgentRequest):
         text = f"Ошибка при обращении к GigaChat для агента {req.agent}: {e}"
 
     return SingleAgentReply(text=text)
+
+
+# ===== Пересчёт итогов по истории =====
+
+@app.post("/api/summary", response_model=SummaryReply)
+async def recalc_summary(req: SummaryRequest):
+    """
+    Пересчёт итогов по истории обсуждения.
+    Берём последние 20 сообщений из history и просим summary-агента
+    подвести новые итоги.
+    """
+    logger.info(
+        "Incoming /api/summary | history_len=%s",
+        len(req.history) if req.history else 0,
+    )
+
+    history_text = ""
+    if req.history:
+        history_text = "\n".join(req.history[-20:])
+
+    if not history_text:
+        return SummaryReply(
+            text="Недостаточно истории для пересчёта итогов. Сначала проведите обсуждение."
+        )
+
+    summary_input = (
+        "Вот выдержка из истории обсуждения совета директоров "
+        "(последние сообщения, в хронологическом порядке):\n\n"
+        f"{history_text}\n\n"
+        "Подведи обновлённые итоги с учётом всего обсуждения по инструкции из system-подсказки."
+    )
+
+    try:
+        text = ask_gigachat("summary", summary_input)
+    except Exception as e:
+        logger.exception("Error while calling GigaChat for /api/summary")
+        text = f"Ошибка при обращении к GigaChat для пересчёта итогов: {e}"
+
+    return SummaryReply(text=text)
