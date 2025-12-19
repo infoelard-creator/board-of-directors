@@ -234,6 +234,23 @@
             flex-shrink: 0; 
         }
 
+        .summary-btn {
+            padding: 12px 16px;
+            background: #e5e7eb;
+            color: #374151;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-right: 8px;
+        }
+
+        .summary-btn:hover {
+            background: #d1d5db;
+        }
+
         .input-field {
             flex: 1;
             padding: 12px 16px;
@@ -339,10 +356,10 @@
                 min-width: 120px;
                 flex-shrink: 0;
             }
-             /* основной контент опускаем ниже фиксированной панели */
+
             .main-area {
-                margin-top: 72px; /* подбери под реальную высоту панели */
-    }
+                margin-top: 72px;
+            }
 
             .chat-area {
                 padding: 12px;
@@ -426,6 +443,9 @@
             </div>
 
             <div class="input-area">
+                <button class="summary-btn" id="summaryBtn" style="display: none;">
+                    Обновить итоги
+                </button>
                 <textarea 
                     class="input-field" 
                     id="messageInput" 
@@ -456,12 +476,20 @@
     };
 
     const ALL_AGENTS = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic'];
-    let selectedAgents = new Set(ALL_AGENTS);   // кто участвует в ближайшем раунде
+
+    // агенты, выбранные для следующего раунда
+    let selectedAgents = new Set(ALL_AGENTS);
+    // агенты, участвовавшие в первом полном раунде
+    let lastRoundAgents = [];
+    // был ли уже хотя бы один summary
+    let hasSummary = false;
+
     let chatHistory = [];
 
     const chatArea = document.getElementById('chatArea');
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
+    const summaryBtn = document.getElementById('summaryBtn');
     let isLoading = false;
 
     // авто‑ресайз textarea
@@ -482,6 +510,12 @@
         }
     });
 
+    // пока заглушка для кнопки обновления итогов
+    summaryBtn.addEventListener('click', () => {
+        if (!hasSummary || isLoading) return;
+        addMessage('Пересчёт итогов пока не реализован на сервере.', 'agent', 'summary');
+    });
+
     function setupAgentCards() {
         document.querySelectorAll('.agent-card').forEach(card => {
             const agent = card.dataset.agent;
@@ -491,8 +525,8 @@
 
                 const hasHistory = chatHistory.length > 0;
 
-                if (!hasHistory) {
-                    // этап выбора состава совета перед первым раундом
+                if (!hasHistory || !hasSummary) {
+                    // этап выбора состава совета до первого summary
                     if (selectedAgents.has(agent)) {
                         selectedAgents.delete(agent);
                         setAgentSelected(agent, false);
@@ -501,7 +535,7 @@
                         setAgentSelected(agent, true);
                     }
                 } else {
-                    // диалог уже идёт: однократный ответ агента по истории
+                    // после первого summary: разовый ответ агента по истории
                     runSingleAgentTurn(agent);
                 }
             });
@@ -577,7 +611,9 @@
         chatArea.scrollTop = chatArea.scrollHeight;
 
         try {
-            const backendResponses = await callBackend(text);
+            const isInitialRound = !hasSummary;
+
+            const backendResponses = await callBackend(text, isInitialRound);
 
             loadingEl.remove();
 
@@ -591,10 +627,17 @@
                 }
             }
 
-            // после общего раунда все лампочки гаснут,
-            // состав на следующий раунд пользователь собирает заново
-            ALL_AGENTS.forEach(a => setAgentSelected(a, false));
-            selectedAgents = new Set();
+            if (isInitialRound) {
+                hasSummary = true;
+                summaryBtn.style.display = 'inline-flex';
+
+                // запомним состав совета этого раунда
+                lastRoundAgents = Array.from(selectedAgents);
+
+                // погасим лампочки и очистим выбор
+                ALL_AGENTS.forEach(a => setAgentSelected(a, false));
+                selectedAgents = new Set();
+            }
 
         } catch (error) {
             console.error('Error:', error);
@@ -607,7 +650,7 @@
         }
     }
 
-    async function callBackend(userMessage) {
+    async function callBackend(userMessage, isInitialRound) {
         const result = {
             ceo: null,
             cfo: null,
@@ -620,6 +663,10 @@
         try {
             const url = "http://45.151.31.180:8000/api/board";
 
+            const agentsForThisCall = isInitialRound
+                ? Array.from(selectedAgents)
+                : (lastRoundAgents.length ? lastRoundAgents : Array.from(selectedAgents));
+
             const response = await fetch(url, {
                 method: "POST",
                 headers: {
@@ -627,8 +674,9 @@
                 },
                 body: JSON.stringify({
                     message: userMessage,
-                    active_agents: Array.from(selectedAgents),
+                    active_agents: agentsForThisCall,
                     history: chatHistory.slice(-20),
+                    mode: isInitialRound ? "initial" : "comment",
                 })
             });
 
@@ -666,7 +714,6 @@
             isLoading = true;
             sendBtn.disabled = true;
 
-            // зажечь лампу на время ответа
             setAgentSelected(agent, true);
 
             const url = "http://45.151.31.180:8000/api/agent";
@@ -696,7 +743,6 @@
             console.error("Request failed:", err);
             addMessage('Ошибка связи с агентом. Попробуйте ещё раз.', 'agent', agent);
         } finally {
-            // после ответа лампочка тухнет
             setAgentSelected(agent, false);
             isLoading = false;
             sendBtn.disabled = false;
