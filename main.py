@@ -123,7 +123,7 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
     system_prompt = AGENT_SYSTEM_PROMPTS[agent]
 
     payload = {
-        "model": "GigaChat",  # при необходимости подставить конкретную модель
+        "model": "GigaChat-2",  # при необходимости подставить конкретную модель
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_msg},
