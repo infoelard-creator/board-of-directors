@@ -531,11 +531,16 @@
         });
 
         if (!response.ok) {
-            const txt = await response.text().catch(() => "");
-            console.error("Summary error:", response.status, response.statusText, txt);
-            addMessage('Не удалось пересчитать итоги. Попробуйте ещё раз.', 'agent', 'summary');
-            return;
-        }
+    const txt = await response.text().catch(() => "");
+    console.error("Summary error:", response.status, response.statusText, txt);
+
+    if (response.status === 429) {
+        addMessage('Слишком много запросов к итогам. Подождите минуту и попробуйте снова.', 'agent', 'summary');
+    } else {
+        addMessage('Не удалось пересчитать итоги. Попробуйте ещё раз.', 'agent', 'summary');
+    }
+    return;
+}
 
         const data = await response.json();
         addMessage(data.text, 'agent', 'summary');
@@ -716,12 +721,20 @@
             });
 
             if (!response.ok) {
-                const text = await response.text().catch(() => "");
-                console.error("Backend error:", response.status, response.statusText, text);
-                const msg = "Ошибка на стороне сервера. Попробуйте ещё раз.";
-                Object.keys(result).forEach(k => result[k] = msg);
-                return result;
-            }
+    const text = await response.text().catch(() => "");
+    console.error("Backend error:", response.status, response.statusText, text);
+
+    let msg;
+    if (response.status === 429) {
+        msg = "Слишком много запросов. Подождите минуту и попробуйте снова.";
+    } else {
+        msg = "Ошибка на стороне сервера. Попробуйте ещё раз.";
+    }
+
+    Object.keys(result).forEach(k => result[k] = msg);
+    return result;
+}
+
 
             const data = await response.json();
             console.log("Backend data:", data);
@@ -765,11 +778,17 @@
             });
 
             if (!response.ok) {
-                const txt = await response.text().catch(() => "");
-                console.error("Agent error:", response.status, response.statusText, txt);
-                addMessage('Не удалось получить дополнительный ответ от агента.', 'agent', agent);
-                return;
-            }
+    const txt = await response.text().catch(() => "");
+    console.error("Agent error:", response.status, response.statusText, txt);
+
+    if (response.status === 429) {
+        addMessage('Слишком много запросов к этому агенту. Подождите минуту и попробуйте снова.', 'agent', agent);
+    } else {
+        addMessage('Не удалось получить дополнительный ответ от агента.', 'agent', agent);
+    }
+    return;
+}
+
 
             const data = await response.json();
             addMessage(data.text, 'agent', agent);
