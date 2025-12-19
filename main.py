@@ -187,12 +187,20 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
 
 app = FastAPI()
 
+from fastapi.middleware.cors import CORSMiddleware
+
+origins = [
+    "http://45.151.31.180:8080",
+    "http://localhost:8080",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["POST"],  # тебе по факту нужны только POST
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # ===== Модели =====
