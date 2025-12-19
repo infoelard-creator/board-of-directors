@@ -149,12 +149,14 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
 
     payload = {
         "model": "GigaChat-2",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_msg},
-        ],
-        "stream": False,
-    }
+        # Небольшая пре-обработка user_msg для фокусировки внимания модели
+formatted_user_msg = f"ОПИСАНИЕ ПРОЕКТА/СИТУАЦИИ:\n{user_msg}\n\nПроанализируй это описание согласно своей роли."
+
+"messages": [
+    {"role": "system", "content": system_prompt},
+    {"role": "user", "content": formatted_user_msg},
+],
+
 
     headers = {
         "Authorization": f"Bearer {token}",
