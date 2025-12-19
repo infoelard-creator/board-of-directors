@@ -99,7 +99,6 @@ AGENT_SYSTEM_PROMPTS = {
         "ВЫХОД: [Идея] | [Verdict: GO/NO-GO/PIVOT] | [Ключевая гипотеза] | [Как проверить <$5K] | [Confidence: X%].\n"
         "Макс 70 слов. Беспощаден в выводах, смел в идеях."
     ),
-    
     "cfo": (
         "ЗАДАЧА: Сжать время до валидации без сжигания лишнего кэша.\n"
         "ШАГ 1: Предложи 1–2 способа удешевить ту же гипотезу (другой канал, более дешёвая выборка, ручной эксперимент).\n"
@@ -108,7 +107,6 @@ AGENT_SYSTEM_PROMPTS = {
         "ВЫХОД: [Verdict: FAST/SLOW] | [Главный тормоз] | [Дешёвая альтернатива] | [Что выкинуть из MVP] | [Confidence: X%].\n"
         "Макс 70 слов. Скорость и бюджет важнее перфекционизма."
     ),
-    
     "cpo": (
         "ЗАДАЧА: Найти нечестное конкурентное преимущество (Moat), за которое будут платить.\n"
         "ШАГ 1: Придумай 2–3 'мутации' продукта (новый пакет, формат доставки ценности, сегмент) с потенциалом Moat.\n"
@@ -117,7 +115,6 @@ AGENT_SYSTEM_PROMPTS = {
         "ВЫХОД: [Идея] | [Verdict: SAFE/VULNERABLE] | [Тип преимущества] | [Вектор атаки конкурентов] | [Confidence: X%].\n"
         "Макс 70 слов. Паранойя обязательна, но ты всё ещё изобретаешь."
     ),
-    
     "marketing": (
         "ЗАДАЧА: Обеспечить масштабирование без ручного труда в основном цикле ценности.\n"
         "ШАГ 1: Сгенерируй 2–3 нестандартных канала или механики роста (партнёрства, продуктовый growth, рефералки, контент‑мемы).\n"
@@ -126,9 +123,8 @@ AGENT_SYSTEM_PROMPTS = {
         "ВЫХОД: [Идея] | [Verdict: SCALABLE/MANUAL] | [Узкое место] | [Рычаг автоматизации] | [Confidence: X%].\n"
         "Макс 70 слов. Думай как инфраструктура, но придумывай как хакер."
     ),
-    
     "skeptic": (
-       "ЗАДАЧА: Вскрыть фатальное недоказанное предположение ДО взлёта.\n"
+        "ЗАДАЧА: Вскрыть фатальное недоказанное предположение ДО взлёта.\n"
         "ШАГ 1: Назови ≥1 ключевое предположение, без которого всё рушится.\n"
         "ШАГ 2: Придумай минимальный жёсткий тест, который может его опровергнуть.\n"
         "Если не можешь — явно запроси недостающие данные.\n"
@@ -157,7 +153,7 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
     system_prompt = AGENT_SYSTEM_PROMPTS[agent]
 
     payload = {
-        "model": "GigaChat-2",  # при необходимости подставить конкретную модель
+        "model": "GigaChat-2",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_msg},
@@ -205,18 +201,21 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
 
 app = FastAPI()
 
-# CORS, чтобы фронт с любого origin мог дергать бэк
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # для продакшена лучше сузить
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+# ===== Модели =====
+
 class ChatRequest(BaseModel):
     message: str
+    active_agents: list[str] | None = None
+    history: list[str] | None = None
 
 
 class AgentReply(BaseModel):
@@ -224,79 +223,109 @@ class AgentReply(BaseModel):
     text: str
 
 
+class SingleAgentRequest(BaseModel):
+    agent: str
+    message: str | None = None
+    history: list[str] | None = None
+
+
+class SingleAgentReply(BaseModel):
+    text: str
+
+
+# ===== Основная цепочка совета директоров =====
+
 @app.post("/api/board", response_model=List[AgentReply])
 async def board_chat(req: ChatRequest):
     """
-    Принимает сообщение пользователя и возвращает список ответов от агентов
-    ceo, cfo, cpo, marketing, skeptic, которые отвечают последовательно,
-    учитывая ответы друг друга.
+    Принимает сообщение пользователя и возвращает список ответов от активных агентов
+    (ceo, cfo, cpo, marketing, skeptic) + summary.
     """
     user_msg = req.message
-    logger.info("Incoming /api/board message: %s", user_msg)
+    logger.info("Incoming /api/board message: %s | active_agents=%s", user_msg, req.active_agents)
+
+    # порядок ролей фиксированный
+    order = ["ceo", "cfo", "cpo", "marketing", "skeptic"]
+
+    # если с фронта ничего не пришло — считаем, что включены все
+    active = req.active_agents or order
+    # нормализуем: оставляем только допустимые роли и в правильном порядке
+    active_ordered = [a for a in order if a in active]
 
     replies: list[AgentReply] = []
+    ctx: dict[str, str] = {}
 
     try:
-        # CEO
-        ceo_input = f"Запрос пользователя:\n{user_msg}"
-        ceo_text = ask_gigachat("ceo", ceo_input)
-        replies.append(AgentReply(agent="ceo", text=ceo_text))
+        # последовательная цепочка только по активным агентам
+        for agent in active_ordered:
+            if agent == "ceo":
+                content_parts = [f"Запрос пользователя:\n{user_msg}"]
+            else:
+                content_parts = [f"Запрос пользователя:\n{user_msg}"]
+                # добавляем ответы уже высказавшихся агентов по порядку
+                for prev in order:
+                    if prev in ctx:
+                        content_parts.append(f"Ответ {prev.upper()}:\n{ctx[prev]}")
+            agent_input = "\n\n".join(content_parts)
 
-        # CFO
-        cfo_input = (
-            f"Запрос пользователя:\n{user_msg}\n\n"
-            f"Ответ CEO:\n{ceo_text}"
-        )
-        cfo_text = ask_gigachat("cfo", cfo_input)
-        replies.append(AgentReply(agent="cfo", text=cfo_text))
+            text = ask_gigachat(agent, agent_input)
+            ctx[agent] = text
+            replies.append(AgentReply(agent=agent, text=text))
 
-        # CPO
-        cpo_input = (
-            f"Запрос пользователя:\n{user_msg}\n\n"
-            f"Ответ CEO:\n{ceo_text}\n\n"
-            f"Ответ CFO:\n{cfo_text}"
-        )
-        cpo_text = ask_gigachat("cpo", cpo_input)
-        replies.append(AgentReply(agent="cpo", text=cpo_text))
+        # summary всегда есть, но видит только реально существующие ответы
+        summary_parts = [f"Запрос пользователя:\n{user_msg}"]
+        for agent in order:
+            if agent in ctx:
+                summary_parts.append(f"Ответ {agent.upper()}:\n{ctx[agent]}")
+        # при желании можно добавить историю
+        if req.history:
+            history_text = "\n".join(req.history[-20:])
+            summary_parts.append(f"История обсуждения (последние 20 сообщений):\n{history_text}")
 
-        # Marketing
-        marketing_input = (
-            f"Запрос пользователя:\n{user_msg}\n\n"
-            f"Ответ CEO:\n{ceo_text}\n\n"
-            f"Ответ CFO:\n{cfo_text}\n\n"
-            f"Ответ CPO:\n{cpo_text}"
-        )
-        marketing_text = ask_gigachat("marketing", marketing_input)
-        replies.append(AgentReply(agent="marketing", text=marketing_text))
-
-        # Skeptic
-        skeptic_input = (
-            f"Запрос пользователя:\n{user_msg}\n\n"
-            f"Ответ CEO:\n{ceo_text}\n\n"
-            f"Ответ CFO:\n{cfo_text}\n\n"
-            f"Ответ CPO:\n{cpo_text}\n\n"
-            f"Ответ маркетинга:\n{marketing_text}"
-        )
-        skeptic_text = ask_gigachat("skeptic", skeptic_input)
-        replies.append(AgentReply(agent="skeptic", text=skeptic_text))
-       
-        # === Итоговый модератор / summary ===
-        summary_input = (
-            f"Запрос пользователя:\n{user_msg}\n\n"
-            f"Ответ CEO:\n{ceo_text}\n\n"
-            f"Ответ CFO:\n{cfo_text}\n\n"
-            f"Ответ CPO:\n{cpo_text}\n\n"
-            f"Ответ маркетинга:\n{marketing_text}\n\n"
-            f"Ответ скептика:\n{skeptic_text}"
-        )
+        summary_input = "\n\n".join(summary_parts)
         summary_text = ask_gigachat("summary", summary_input)
         replies.append(AgentReply(agent="summary", text=summary_text))
 
     except Exception as e:
         logger.exception("Error while calling GigaChat board chain")
-        # если что-то падает посреди цепочки — уже собранные ответы вернём,
-        # а для упавшей/следующих ролей можно добавить заглушку
         replies.append(AgentReply(agent="error", text=f"Ошибка при обращении к GigaChat: {e}"))
 
     logger.info("Outgoing /api/board replies: %s", replies)
     return replies
+
+
+# ===== Перезапуск одного агента по истории =====
+
+@app.post("/api/agent", response_model=SingleAgentReply)
+async def single_agent(req: SingleAgentRequest):
+    """
+    Перезапуск одной роли (ceo/cfo/.../skeptic/summary) по истории общения.
+    История обрезается до 20 последних записей.
+    """
+    logger.info("Incoming /api/agent: agent=%s | message=%s", req.agent, req.message)
+
+    if req.agent not in AGENT_SYSTEM_PROMPTS:
+        return SingleAgentReply(text=f"Неизвестный агент: {req.agent}")
+
+    history_text = ""
+    if req.history:
+        history_text = "\n".join(req.history[-20:])
+
+    parts: list[str] = []
+    if req.message:
+        parts.append(f"Текущий запрос пользователя:\n{req.message}")
+    if history_text:
+        parts.append(f"История обсуждения (последние 20 сообщений):\n{history_text}")
+
+    if not parts:
+        parts.append("Проанализируй ситуацию и предложи ещё одну конкретную идею/замечание от своей роли.")
+
+    full_content = "\n\n".join(parts)
+
+    try:
+        text = ask_gigachat(req.agent, full_content)
+    except Exception as e:
+        logger.exception("Error while calling GigaChat for single agent=%s", req.agent)
+        text = f"Ошибка при обращении к GigaChat для агента {req.agent}: {e}"
+
+    return SingleAgentReply(text=text)
