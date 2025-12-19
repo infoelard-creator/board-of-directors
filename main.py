@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 from typing import List
 
 import requests
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
+from auth import create_access_token, verify_token, TokenResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -239,12 +240,26 @@ class SummaryRequest(BaseModel):
 class SummaryReply(BaseModel):
     text: str
 
+# ===== JWT login =====
+
+@app.post("/api/login", response_model=TokenResponse)
+async def login(user_id: str):
+    """
+    Простой логин: принимает user_id (строка), возвращает JWT-токен.
+    """
+    token = create_access_token(user_id)
+    return TokenResponse(access_token=token)
+
 
 # ===== Основная цепочка совета директоров =====
 
 @app.post("/api/board", response_model=List[AgentReply])
 @limiter.limit("10/minute")
-async def board_chat(req: ChatRequest, request: Request):
+async def board_chat(
+    req: ChatRequest,
+    request: Request,
+    user_id: str = Depends(verify_token),
+):
 
     """
     mode = "initial"  — первый раунд: активные агенты + summary.
@@ -326,7 +341,12 @@ async def board_chat(req: ChatRequest, request: Request):
 
 @app.post("/api/agent", response_model=SingleAgentReply)
 @limiter.limit("20/minute")
-async def single_agent(req: SingleAgentRequest, request: Request):
+async def single_agent(
+    req: SingleAgentRequest,
+    request: Request,
+    user_id: str = Depends(verify_token),
+):
+
 
     logger.info(
         "Incoming /api/agent: agent=%s | message=%s",
@@ -367,7 +387,12 @@ async def single_agent(req: SingleAgentRequest, request: Request):
 
 @app.post("/api/summary", response_model=SummaryReply)
 @limiter.limit("10/minute")
-async def recalc_summary(req: SummaryRequest, request: Request):
+async def recalc_summary(
+    req: SummaryRequest,
+    request: Request,
+    user_id: str = Depends(verify_token),
+):
+
 
     """
     Пересчёт итогов по истории обсуждения.
