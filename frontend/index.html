@@ -465,7 +465,44 @@
     }
     setVh();
     window.addEventListener('resize', setVh);
+let authToken = null;
 
+function generateOrGetUserId() {
+    let userId = localStorage.getItem("board_user_id");
+    if (!userId) {
+        userId = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+        localStorage.setItem("board_user_id", userId);
+    }
+    return userId;
+}
+
+async function initAuth() {
+    const userId = generateOrGetUserId();
+
+    try {
+        const response = await fetch("http://45.151.31.180:8000/api/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ user_id: userId }),
+        });
+
+        if (!response.ok) {
+            console.error("Auth failed:", response.status, response.statusText);
+            return;
+        }
+
+        const data = await response.json();
+        authToken = data.access_token;
+        console.log("Auth OK for", userId);
+    } catch (e) {
+        console.error("Auth error:", e);
+    }
+}
+
+window.addEventListener("load", initAuth);
+    
     const agents = {
         ceo:   { name: 'CEO',       role: 'Стратегия и видение' },
         cfo:   { name: 'CFO',       role: 'Финансы и риски' },
@@ -521,14 +558,16 @@
         const url = "http://45.151.31.180:8000/api/summary";
 
         const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                history: chatHistory.slice(-20),
-            })
-        });
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({
+        history: chatHistory.slice(-20),
+    })
+});
+
 
         if (!response.ok) {
     const txt = await response.text().catch(() => "");
@@ -708,17 +747,19 @@
                 : (lastRoundAgents.length ? lastRoundAgents : Array.from(selectedAgents));
 
             const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    message: userMessage,
-                    active_agents: agentsForThisCall,
-                    history: chatHistory.slice(-20),
-                    mode: isInitialRound ? "initial" : "comment",
-                })
-            });
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({
+        message: userMessage,
+        active_agents: agentsForThisCall,
+        history: chatHistory.slice(-20),
+        mode: isInitialRound ? "initial" : "comment",
+    })
+});
+
 
             if (!response.ok) {
     const text = await response.text().catch(() => "");
@@ -767,15 +808,17 @@
             const url = "http://45.151.31.180:8000/api/agent";
 
             const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    agent,
-                    history: chatHistory.slice(-20),
-                })
-            });
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({
+        agent,
+        history: chatHistory.slice(-20),
+    })
+});
+
 
             if (!response.ok) {
     const txt = await response.text().catch(() => "");
