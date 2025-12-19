@@ -17,7 +17,9 @@
             --color-skeptic: #8b4513;
             --color-summary: #555555;
         }
-
+        html, body {
+            height: 100%;
+        }
         * {
             box-sizing: border-box;
         }
@@ -204,6 +206,7 @@
             display: flex;
             gap: 12px;
             background: white;
+            flex-shrink: 0; 
         }
 
         .input-field {
@@ -281,7 +284,7 @@
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
-                height: auto;
+                height: 100vh;
                 min-height: 100vh;
             }
 
@@ -307,7 +310,6 @@
             }
 
             .main-area {
-                height: calc(100vh - 80px);
             }
 
             .chat-area {
