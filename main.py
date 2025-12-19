@@ -4,7 +4,10 @@ from datetime import datetime, timedelta
 from typing import List
 
 import requests
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import logging
@@ -185,9 +188,8 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
 
 # ===== FastAPI-приложение =====
 
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
-
-from fastapi.middleware.cors import CORSMiddleware
 
 origins = [
     "http://45.151.31.180:8080",
@@ -202,6 +204,9 @@ app.add_middleware(
     allow_methods=["POST"],  # тебе по факту нужны только POST
     allow_headers=["Content-Type", "Authorization"],
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ===== Модели =====
 
@@ -238,7 +243,9 @@ class SummaryReply(BaseModel):
 # ===== Основная цепочка совета директоров =====
 
 @app.post("/api/board", response_model=List[AgentReply])
-async def board_chat(req: ChatRequest):
+@limiter.limit("10/minute")
+async def board_chat(req: ChatRequest, request: Request):
+
     """
     mode = "initial"  — первый раунд: активные агенты + summary.
     mode = "comment"  — комментарий: только активные агенты, без нового summary.
@@ -318,7 +325,9 @@ async def board_chat(req: ChatRequest):
 # ===== Перезапуск одного агента по истории =====
 
 @app.post("/api/agent", response_model=SingleAgentReply)
-async def single_agent(req: SingleAgentRequest):
+@limiter.limit("20/minute")
+async def single_agent(req: SingleAgentRequest, request: Request):
+
     logger.info(
         "Incoming /api/agent: agent=%s | message=%s",
         req.agent,
@@ -357,7 +366,9 @@ async def single_agent(req: SingleAgentRequest):
 # ===== Пересчёт итогов по истории =====
 
 @app.post("/api/summary", response_model=SummaryReply)
-async def recalc_summary(req: SummaryRequest):
+@limiter.limit("10/minute")
+async def recalc_summary(req: SummaryRequest, request: Request):
+
     """
     Пересчёт итогов по истории обсуждения.
     Берём последние 20 сообщений из history и просим summary-агента
