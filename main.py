@@ -301,58 +301,59 @@ async def board_chat(
 
     try:
         def build_agent_input(agent_name: str) -> str:
-    parts: list[str] = []
+            parts: list[str] = []
 
-    # 1. всегда поднимаем исходный запрос наверх
-    parts.append(
-        "ИСХОДНЫЙ ЗАПРОС ПОЛЬЗОВАТЕЛЯ "
-        "(это главная точка опоры, не меняй её формулировку по смыслу):\n"
-        f"{user_msg}"
-    )
+            # 1. всегда поднимаем исходный запрос наверх
+            parts.append(
+                "ИСХОДНЫЙ ЗАПРОС ПОЛЬЗОВАТЕЛЯ "
+                "(это главная точка опоры, не меняй её формулировку по смыслу):\n"
+                f"{user_msg}"
+            )
 
-    # 2. поясняем режим
-    if mode == "comment":
-        parts.append(
-            "ТЕКУЩИЙ КОММЕНТАРИЙ ПОЛЬЗОВАТЕЛЯ "
-            "(уточнение к исходному запросу):\n"
-            f"{user_msg}"
-        )
-        parts.append(
-            "Сначала кратко переформулируй исходный запрос (1 строка), "
-            "затем прокомментируй этот комментарий, опираясь на исходный запрос."
-        )
-    else:
-        parts.append(
-            "Твоя задача — ответить на этот исходный запрос в рамках своей роли."
-        )
+            # 2. поясняем режим
+            if mode == "comment":
+                parts.append(
+                    "ТЕКУЩИЙ КОММЕНТАРИЙ ПОЛЬЗОВАТЕЛЯ "
+                    "(уточнение к исходному запросу):\n"
+                    f"{user_msg}"
+                )
+                parts.append(
+                    "Сначала кратко переформулируй исходный запрос (1 строка), "
+                    "затем прокомментируй этот комментарий, опираясь на исходный запрос."
+                )
+            else:
+                parts.append(
+                    "Твоя задача — ответить на этот исходный запрос в рамках своей роли."
+                )
 
-    # 3. короткая история (обрезаем, чтобы не забивать контекст)
-    if req.history:
-        history_text = "\n".join(req.history[-10:])
-        parts.append(
-            "ВЫДЕРЖКА ИЗ ПРОШЛОЙ ДИСКУССИИ (для справки, не подменяй исходный запрос):\n"
-            + history_text
-        )
+            # 3. короткая история (обрезаем, чтобы не забивать контекст)
+            if req.history:
+                history_text = "\n".join(req.history[-10:])
+                parts.append(
+                    "ВЫДЕРЖКА ИЗ ПРОШЛОЙ ДИСКУССИИ (для справки, не подменяй исходный запрос):\n"
+                    + history_text
+                )
 
-    # 4. ответы других ролей
-    if ctx:
-        for prev in order:
-            if prev in ctx:
-                parts.append(f"Ответ {prev.upper()} (их мнение, не обязательно соглашаться):\n{ctx[prev]}")
+            # 4. ответы других ролей
+            if ctx:
+                for prev in order:
+                    if prev in ctx:
+                        parts.append(
+                            f"Ответ {prev.upper()} (их мнение, не обязательно соглашаться):\n{ctx[prev]}"
+                        )
 
-    parts.append(
-        "Отвечай кратко по своему формату, начиная с 1 строки, где ты перескажешь "
-        "суть исходного запроса пользователя."
-    )
+            parts.append(
+                "Отвечай кратко по своему формату, начиная с 1 строки, где ты перескажешь "
+                "суть исходного запроса пользователя."
+            )
 
-    return "\n\n".join(parts)
+            return "\n\n".join(parts)
 
         for agent in active_ordered:
             agent_input = build_agent_input(agent)
             text = ask_gigachat(agent, agent_input)
             ctx[agent] = text
             replies.append(AgentReply(agent=agent, text=text))
-
         if mode == "initial":
             summary_parts = [
                 "ИСХОДНЫЙ ЗАПРОС ПОЛЬЗОВАТЕЛЯ (основа для всех выводов):\n"
@@ -364,13 +365,14 @@ async def board_chat(
             if req.history:
                 history_text = "\n".join(req.history[-20:])
                 summary_parts.append(
-                    f"История обсуждения (последние 20 сообщений):\n{history_text}"
+                    "История обсуждения (последние 20 сообщений):\n"
+                    + history_text
                 )
 
             summary_input = "\n\n".join(summary_parts)
             summary_text = ask_gigachat("summary", summary_input)
             replies.append(AgentReply(agent="summary", text=summary_text))
-
+            
     except Exception as e:
         logger.exception("Error while calling GigaChat board chain")
         replies.append(
