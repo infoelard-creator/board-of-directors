@@ -150,15 +150,21 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
     token = get_gigachat_token()
     system_prompt = AGENT_SYSTEM_PROMPTS[agent]
 
+    # 1) усиливаем внимание к описанию пользователя
+    formatted_user_msg = (
+        "ОПИСАНИЕ ПРОЕКТА/СИТУАЦИИ ПОЛЬЗОВАТЕЛЯ.\n"
+        "Опирайся на него в ответе строго в рамках своей роли.\n\n"
+        f"{user_msg}"
+    )
+
     payload = {
         "model": "GigaChat-2",
-        # Небольшая пре-обработка user_msg для фокусировки внимания модели
-    formatted_user_msg = f"ОПИСАНИЕ ПРОЕКТА/СИТУАЦИИ:\n{user_msg}\n\nПроанализируй это описание согласно своей роли."
-
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": formatted_user_msg},
         ],
+        "stream": False,
+    }
 
 
     headers = {
@@ -295,27 +301,51 @@ async def board_chat(
 
     try:
         def build_agent_input(agent_name: str) -> str:
-            parts: list[str] = []
+    parts: list[str] = []
 
-            if mode == "comment":
-                parts.append(f"Текущий комментарий пользователя:\n{user_msg}")
-                if req.history:
-                    history_text = "\n".join(req.history[-20:])
-                    parts.append(
-                        "Фрагменты предыдущей дискуссии (хронологически):\n" + history_text
-                    )
-                parts.append(
-                    "Дай ответ на комментарий, учитывая контекст выше, но опираясь прежде всего на текущий комментарий."
-                )
-            else:
-                parts.append(f"Запрос пользователя:\n{user_msg}")
+    # 1. всегда поднимаем исходный запрос наверх
+    parts.append(
+        "ИСХОДНЫЙ ЗАПРОС ПОЛЬЗОВАТЕЛЯ "
+        "(это главная точка опоры, не меняй её формулировку по смыслу):\n"
+        f"{user_msg}"
+    )
 
-            if ctx:
-                for prev in order:
-                    if prev in ctx:
-                        parts.append(f"Ответ {prev.upper()}:\n{ctx[prev]}")
+    # 2. поясняем режим
+    if mode == "comment":
+        parts.append(
+            "ТЕКУЩИЙ КОММЕНТАРИЙ ПОЛЬЗОВАТЕЛЯ "
+            "(уточнение к исходному запросу):\n"
+            f"{user_msg}"
+        )
+        parts.append(
+            "Сначала кратко переформулируй исходный запрос (1 строка), "
+            "затем прокомментируй этот комментарий, опираясь на исходный запрос."
+        )
+    else:
+        parts.append(
+            "Твоя задача — ответить на этот исходный запрос в рамках своей роли."
+        )
 
-            return "\n\n".join(parts)
+    # 3. короткая история (обрезаем, чтобы не забивать контекст)
+    if req.history:
+        history_text = "\n".join(req.history[-10:])
+        parts.append(
+            "ВЫДЕРЖКА ИЗ ПРОШЛОЙ ДИСКУССИИ (для справки, не подменяй исходный запрос):\n"
+            + history_text
+        )
+
+    # 4. ответы других ролей
+    if ctx:
+        for prev in order:
+            if prev in ctx:
+                parts.append(f"Ответ {prev.upper()} (их мнение, не обязательно соглашаться):\n{ctx[prev]}")
+
+    parts.append(
+        "Отвечай кратко по своему формату, начиная с 1 строки, где ты перескажешь "
+        "суть исходного запроса пользователя."
+    )
+
+    return "\n\n".join(parts)
 
         for agent in active_ordered:
             agent_input = build_agent_input(agent)
@@ -324,7 +354,10 @@ async def board_chat(
             replies.append(AgentReply(agent=agent, text=text))
 
         if mode == "initial":
-            summary_parts = [f"Запрос пользователя:\n{user_msg}"]
+            summary_parts = [
+                "ИСХОДНЫЙ ЗАПРОС ПОЛЬЗОВАТЕЛЯ (основа для всех выводов):\n"
+                f"{user_msg}"
+            ]
             for agent in order:
                 if agent in ctx:
                     summary_parts.append(f"Ответ {agent.upper()}:\n{ctx[agent]}")
