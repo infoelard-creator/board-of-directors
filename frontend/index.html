@@ -15,6 +15,7 @@
             --color-cpo: #5a3d2d;
             --color-marketing: #3d2d5a;
             --color-skeptic: #8b4513;
+            --color-summary: #555555;
         }
 
         * {
@@ -190,6 +191,7 @@
         .message.agent.cpo .message-header { color: var(--color-cpo); }
         .message.agent.marketing .message-header { color: var(--color-marketing); }
         .message.agent.skeptic .message-header { color: var(--color-skeptic); }
+        .message.agent.summary .message-header { color: var(--color-summary); }
 
         .message-content {
             font-size: 14px;
@@ -397,6 +399,10 @@
             skeptic: {
                 name: 'Скептик',
                 role: 'Критический советник',
+            },
+             skeptic: {
+                name: 'Итоги',
+                role: 'Модератор сессии',
             }
         };
 
@@ -469,7 +475,7 @@
             chatArea.scrollTop = chatArea.scrollHeight;
 
             try {
-                const agentOrder = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic'];
+                const agentOrder = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic', 'summary'];
 
                 const backendResponses = await callBackend(text);
 
@@ -498,7 +504,8 @@
                 cfo: null,
                 cpo: null,
                 marketing: null,
-                skeptic: null
+                skeptic: null,
+                summary: null,
             };
 
             try {
@@ -525,6 +532,7 @@
                     result.cpo = msg;
                     result.marketing = msg;
                     result.skeptic = msg;
+                    result.summary = msg; 
                     return result;
                 }
 
@@ -545,6 +553,7 @@
                 result.cpo = msg;
                 result.marketing = msg;
                 result.skeptic = msg;
+                result.summary = msg; 
             }
 
             return result;
