@@ -437,260 +437,272 @@
         </div>
     </div>
 
-    <script>
-        // фикс 100vh на мобилках
-        function setVh() {
-            const vh = window.innerHeight * 0.01;
-            document.documentElement.style.setProperty('--vh', `${vh}px`);
-        }
-        setVh();
-        window.addEventListener('resize', setVh);
+<script>
+    // фикс 100vh на мобилках
+    function setVh() {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    setVh();
+    window.addEventListener('resize', setVh);
 
-        const agents = {
-            ceo:   { name: 'CEO',       role: 'Стратегия и видение' },
-            cfo:   { name: 'CFO',       role: 'Финансы и риски' },
-            cpo:   { name: 'CPO',       role: 'Продукт и UX' },
-            marketing: { name: 'Маркетинг', role: 'Маркетинг' },
-            skeptic:   { name: 'Скептик',   role: 'Критический советник' },
-            summary:   { name: 'Итоги',     role: 'Модератор сессии' },
+    const agents = {
+        ceo:   { name: 'CEO',       role: 'Стратегия и видение' },
+        cfo:   { name: 'CFO',       role: 'Финансы и риски' },
+        cpo:   { name: 'CPO',       role: 'Продукт и UX' },
+        marketing: { name: 'Маркетинг', role: 'Маркетинг' },
+        skeptic:   { name: 'Скептик',   role: 'Критический советник' },
+        summary:   { name: 'Итоги',     role: 'Модератор сессии' },
+    };
+
+    const ALL_AGENTS = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic'];
+    let selectedAgents = new Set(ALL_AGENTS);   // кто участвует в ближайшем раунде
+    let chatHistory = [];
+
+    const chatArea = document.getElementById('chatArea');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    let isLoading = false;
+
+    // авто‑ресайз textarea
+    messageInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+    });
+
+    // обработчики карточек агентов
+    setupAgentCards();
+
+    // отправка сообщения
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    function setupAgentCards() {
+        document.querySelectorAll('.agent-card').forEach(card => {
+            const agent = card.dataset.agent;
+
+            card.addEventListener('click', () => {
+                if (isLoading) return;
+
+                const hasHistory = chatHistory.length > 0;
+
+                if (!hasHistory) {
+                    // этап выбора состава совета перед первым раундом
+                    if (selectedAgents.has(agent)) {
+                        selectedAgents.delete(agent);
+                        setAgentSelected(agent, false);
+                    } else {
+                        selectedAgents.add(agent);
+                        setAgentSelected(agent, true);
+                    }
+                } else {
+                    // диалог уже идёт: однократный ответ агента по истории
+                    runSingleAgentTurn(agent);
+                }
+            });
+        });
+
+        // изначально все выбраны → зелёные
+        selectedAgents.forEach(a => setAgentSelected(a, true));
+    }
+
+    function setAgentSelected(agent, isSelected) {
+        const card = document.querySelector(`.agent-card[data-agent="${agent}"]`);
+        if (!card) return;
+        const dot = card.querySelector('.agent-status');
+        if (!dot) return;
+        if (isSelected) {
+            dot.classList.add('on');
+            dot.classList.remove('off');
+        } else {
+            dot.classList.add('off');
+            dot.classList.remove('on');
+        }
+    }
+
+    function addMessage(text, sender = 'user', agentType = null) {
+        const messageEl = document.createElement('div');
+        messageEl.className = `message ${sender}`;
+        if (agentType) messageEl.classList.add(agentType);
+
+        let content = text;
+        if (sender === 'agent') {
+            const agent = agents[agentType];
+            content = `<div class="message-header"><span class="agent-badge" style="background: var(--color-${agentType})"></span>${agent.name}</div><div class="message-content">${escapeHtml(text)}</div>`;
+            chatHistory.push(`${agentType.toUpperCase()}: ${text}`);
+        } else {
+            content = `<div class="message-content">${escapeHtml(text)}</div>`;
+            chatHistory.push(`USER: ${text}`);
+        }
+
+        if (chatHistory.length > 50) {
+            chatHistory = chatHistory.slice(-50);
+        }
+
+        messageEl.innerHTML = content;
+        chatArea.appendChild(messageEl);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async function sendMessage() {
+        const text = messageInput.value.trim();
+        if (!text || isLoading) return;
+
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+
+        const emptyState = chatArea.querySelector('.empty-state');
+        if (emptyState) emptyState.remove();
+
+        addMessage(text, 'user');
+
+        isLoading = true;
+        sendBtn.disabled = true;
+
+        const loadingEl = document.createElement('div');
+        loadingEl.className = 'loading';
+        loadingEl.innerHTML = '<div class="spinner"></div>Совет обсуждает ваш вопрос...';
+        chatArea.appendChild(loadingEl);
+        chatArea.scrollTop = chatArea.scrollHeight;
+
+        try {
+            const backendResponses = await callBackend(text);
+
+            loadingEl.remove();
+
+            const agentOrder = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic', 'summary'];
+
+            for (const agentType of agentOrder) {
+                const response = backendResponses[agentType];
+                if (response) {
+                    addMessage(response, 'agent', agentType);
+                    await new Promise(r => setTimeout(r, 300));
+                }
+            }
+
+            // после общего раунда все лампочки гаснут,
+            // состав на следующий раунд пользователь собирает заново
+            ALL_AGENTS.forEach(a => setAgentSelected(a, false));
+            selectedAgents = new Set();
+
+        } catch (error) {
+            console.error('Error:', error);
+            loadingEl.remove();
+            addMessage('Произошла ошибка при обработке. Попробуйте ещё раз.', 'agent', 'skeptic');
+        } finally {
+            isLoading = false;
+            sendBtn.disabled = false;
+            messageInput.focus();
+        }
+    }
+
+    async function callBackend(userMessage) {
+        const result = {
+            ceo: null,
+            cfo: null,
+            cpo: null,
+            marketing: null,
+            skeptic: null,
+            summary: null,
         };
 
-        const ALL_AGENTS = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic'];
-        let activeAgents = new Set(ALL_AGENTS);
-        let chatHistory = [];
+        try {
+            const url = "http://45.151.31.180:8000/api/board";
 
-        const chatArea = document.getElementById('chatArea');
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-        let isLoading = false;
-
-        // Auto-resize textarea
-        messageInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-        });
-
-        // Toggle / rerun agents by clicks
-        setupAgentCards();
-
-        // Send message
-        sendBtn.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-
-        function setupAgentCards() {
-            document.querySelectorAll('.agent-card').forEach(card => {
-                const agent = card.dataset.agent;
-
-                // клик - включить/выключить роль
-                card.addEventListener('click', () => {
-                    if (isLoading) return;
-                    if (activeAgents.has(agent)) {
-                        activeAgents.delete(agent);
-                        card.classList.add('disabled');
-                    } else {
-                        activeAgents.add(agent);
-                        card.classList.remove('disabled');
-                    }
-                    updateAgentIndicators();
-                });
-
-                // двойной клик - перезапуск только этого агента по истории
-                card.addEventListener('dblclick', (e) => {
-                    e.stopPropagation();
-                    rerunAgent(agent);
-                });
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    message: userMessage,
+                    active_agents: Array.from(selectedAgents),
+                    history: chatHistory.slice(-20),
+                })
             });
 
-            updateAgentIndicators();
-        }
+            if (!response.ok) {
+                const text = await response.text().catch(() => "");
+                console.error("Backend error:", response.status, response.statusText, text);
+                const msg = "Ошибка на стороне сервера. Попробуйте ещё раз.";
+                Object.keys(result).forEach(k => result[k] = msg);
+                return result;
+            }
 
-        function updateAgentIndicators() {
-            document.querySelectorAll('.agent-card').forEach(card => {
-                const agent = card.dataset.agent;
-                const dot = card.querySelector('.agent-status');
-                if (!dot) return;
-                if (activeAgents.has(agent)) {
-                    dot.classList.add('on');
-                    dot.classList.remove('off');
-                } else {
-                    dot.classList.add('off');
-                    dot.classList.remove('on');
+            const data = await response.json();
+            console.log("Backend data:", data);
+
+            for (const item of data) {
+                if (result.hasOwnProperty(item.agent)) {
+                    result[item.agent] = item.text;
                 }
-            });
-        }
-
-        function addMessage(text, sender = 'user', agentType = null) {
-            const messageEl = document.createElement('div');
-            messageEl.className = `message ${sender}`;
-            if (agentType) messageEl.classList.add(agentType);
-
-            let content = text;
-            if (sender === 'agent') {
-                const agent = agents[agentType];
-                content = `<div class="message-header"><span class="agent-badge" style="background: var(--color-${agentType})"></span>${agent.name}</div><div class="message-content">${escapeHtml(text)}</div>`;
-                chatHistory.push(`${agentType.toUpperCase()}: ${text}`);
-            } else {
-                content = `<div class="message-content">${escapeHtml(text)}</div>`;
-                chatHistory.push(`USER: ${text}`);
             }
 
-            // ограничим историю 50 записями (20 будет нарезаться на бэке)
-            if (chatHistory.length > 50) {
-                chatHistory = chatHistory.slice(-50);
-            }
-
-            messageEl.innerHTML = content;
-            chatArea.appendChild(messageEl);
-            chatArea.scrollTop = chatArea.scrollHeight;
+        } catch (err) {
+            console.error("Request failed:", err);
+            const msg = "Не удалось связаться с сервером. Попробуйте ещё раз.";
+            Object.keys(result).forEach(k => result[k] = msg);
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        return result;
+    }
 
-        async function sendMessage() {
-            const text = messageInput.value.trim();
-            if (!text || isLoading) return;
+    async function runSingleAgentTurn(agent) {
+        if (isLoading) return;
+        if (!agents[agent]) return;
 
-            messageInput.value = '';
-            messageInput.style.height = 'auto';
-            
-            const emptyState = chatArea.querySelector('.empty-state');
-            if (emptyState) emptyState.remove();
-
-            addMessage(text, 'user');
-
+        try {
             isLoading = true;
             sendBtn.disabled = true;
-            const loadingEl = document.createElement('div');
-            loadingEl.className = 'loading';
-            loadingEl.innerHTML = '<div class="spinner"></div>Совет обсуждает ваш вопрос...';
-            chatArea.appendChild(loadingEl);
-            chatArea.scrollTop = chatArea.scrollHeight;
 
-            try {
-                const backendResponses = await callBackend(text);
+            // зажечь лампу на время ответа
+            setAgentSelected(agent, true);
 
-                loadingEl.remove();
+            const url = "http://45.151.31.180:8000/api/agent";
 
-                const agentOrder = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic', 'summary'];
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    agent,
+                    history: chatHistory.slice(-20),
+                })
+            });
 
-                for (const agentType of agentOrder) {
-                    const response = backendResponses[agentType];
-                    if (response) {
-                        addMessage(response, 'agent', agentType);
-                        await new Promise(r => setTimeout(r, 300));
-                    }
-                }
-
-            } catch (error) {
-                console.error('Error:', error);
-                loadingEl.remove();
-                addMessage('Произошла ошибка при обработке. Попробуйте ещё раз.', 'agent', 'skeptic');
-            } finally {
-                isLoading = false;
-                sendBtn.disabled = false;
-                messageInput.focus();
-            }
-        }
-
-        async function callBackend(userMessage) {
-            const result = {
-                ceo: null,
-                cfo: null,
-                cpo: null,
-                marketing: null,
-                skeptic: null,
-                summary: null,
-            };
-
-            try {
-                const url = "http://45.151.31.180:8000/api/board";
-
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        message: userMessage,
-                        active_agents: Array.from(activeAgents),
-                        history: chatHistory.slice(-20), // последние 20 для summary/бэка
-                    })
-                });
-
-                if (!response.ok) {
-                    const text = await response.text().catch(() => "");
-                    console.error("Backend error:", response.status, response.statusText, text);
-                    const msg = "Ошибка на стороне сервера. Попробуйте ещё раз.";
-                    Object.keys(result).forEach(k => result[k] = msg);
-                    return result;
-                }
-
-                const data = await response.json();
-                console.log("Backend data:", data);
-
-                for (const item of data) {
-                    if (result.hasOwnProperty(item.agent)) {
-                        result[item.agent] = item.text;
-                    }
-                }
-
-            } catch (err) {
-                console.error("Request failed:", err);
-                const msg = "Не удалось связаться с сервером. Попробуйте ещё раз.";
-                Object.keys(result).forEach(k => result[k] = msg);
+            if (!response.ok) {
+                const txt = await response.text().catch(() => "");
+                console.error("Agent error:", response.status, response.statusText, txt);
+                addMessage('Не удалось получить дополнительный ответ от агента.', 'agent', agent);
+                return;
             }
 
-            return result;
+            const data = await response.json();
+            addMessage(data.text, 'agent', agent);
+
+        } catch (err) {
+            console.error("Request failed:", err);
+            addMessage('Ошибка связи с агентом. Попробуйте ещё раз.', 'agent', agent);
+        } finally {
+            // после ответа лампочка тухнет
+            setAgentSelected(agent, false);
+            isLoading = false;
+            sendBtn.disabled = false;
         }
+    }
+</script>
 
-        async function rerunAgent(agent) {
-            if (isLoading) return;
-            if (!agents[agent]) return;
-
-            try {
-                isLoading = true;
-                sendBtn.disabled = true;
-
-                const url = "http://45.151.31.180:8000/api/agent";
-
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        agent,
-                        history: chatHistory.slice(-20),
-                    })
-                });
-
-                if (!response.ok) {
-                    const txt = await response.text().catch(() => "");
-                    console.error("Agent error:", response.status, response.statusText, txt);
-                    addMessage('Не удалось получить дополнительный ответ от агента.', 'agent', agent);
-                    return;
-                }
-
-                const data = await response.json();
-                addMessage(data.text, 'agent', agent);
-
-            } catch (err) {
-                console.error("Request failed:", err);
-                addMessage('Ошибка связи с агентом. Попробуйте ещё раз.', 'agent', agent);
-            } finally {
-                isLoading = false;
-                sendBtn.disabled = false;
-            }
-        }
-    </script>
 </body>
 </html>
