@@ -510,11 +510,46 @@
         }
     });
 
-    // пока заглушка для кнопки обновления итогов
-    summaryBtn.addEventListener('click', () => {
-        if (!hasSummary || isLoading) return;
-        addMessage('Пересчёт итогов пока не реализован на сервере.', 'agent', 'summary');
-    });
+    summaryBtn.addEventListener('click', async () => {
+    if (!hasSummary || isLoading) return;
+
+    try {
+        isLoading = true;
+        sendBtn.disabled = true;
+        summaryBtn.disabled = true;
+
+        const url = "http://45.151.31.180:8000/api/summary";
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                history: chatHistory.slice(-20),
+            })
+        });
+
+        if (!response.ok) {
+            const txt = await response.text().catch(() => "");
+            console.error("Summary error:", response.status, response.statusText, txt);
+            addMessage('Не удалось пересчитать итоги. Попробуйте ещё раз.', 'agent', 'summary');
+            return;
+        }
+
+        const data = await response.json();
+        addMessage(data.text, 'agent', 'summary');
+
+    } catch (err) {
+        console.error("Request failed:", err);
+        addMessage('Ошибка связи при пересчёте итогов. Попробуйте ещё раз.', 'agent', 'summary');
+    } finally {
+        isLoading = false;
+        sendBtn.disabled = false;
+        summaryBtn.disabled = false;
+    }
+});
+
 
     function setupAgentCards() {
         document.querySelectorAll('.agent-card').forEach(card => {
