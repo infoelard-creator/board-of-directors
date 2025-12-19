@@ -217,20 +217,64 @@ class AgentReply(BaseModel):
 @app.post("/api/board", response_model=List[AgentReply])
 async def board_chat(req: ChatRequest):
     """
-    Принимает сообщение пользователя и возвращает список ответов от агентов:
-    ceo, cfo, cpo, marketing, skeptic.
+    Принимает сообщение пользователя и возвращает список ответов от агентов
+    ceo, cfo, cpo, marketing, skeptic, которые отвечают последовательно,
+    учитывая ответы друг друга.
     """
     user_msg = req.message
     logger.info("Incoming /api/board message: %s", user_msg)
 
     replies: list[AgentReply] = []
-    for agent in ["ceo", "cfo", "cpo", "marketing", "skeptic"]:
-        try:
-            text = ask_gigachat(agent, user_msg)
-        except Exception as e:
-            logger.exception("Error while calling GigaChat for agent=%s", agent)
-            text = f"Ошибка при обращении к GigaChat для {agent}: {e}"
-        replies.append(AgentReply(agent=agent, text=text))
+
+    try:
+        # CEO
+        ceo_input = f"Запрос пользователя:\n{user_msg}"
+        ceo_text = ask_gigachat("ceo", ceo_input)
+        replies.append(AgentReply(agent="ceo", text=ceo_text))
+
+        # CFO
+        cfo_input = (
+            f"Запрос пользователя:\n{user_msg}\n\n"
+            f"Ответ CEO:\n{ceo_text}"
+        )
+        cfo_text = ask_gigachat("cfo", cfo_input)
+        replies.append(AgentReply(agent="cfo", text=cfo_text))
+
+        # CPO
+        cpo_input = (
+            f"Запрос пользователя:\n{user_msg}\n\n"
+            f"Ответ CEO:\n{ceo_text}\n\n"
+            f"Ответ CFO:\n{cfo_text}"
+        )
+        cpo_text = ask_gigachat("cpo", cpo_input)
+        replies.append(AgentReply(agent="cpo", text=cpo_text))
+
+        # Marketing
+        marketing_input = (
+            f"Запрос пользователя:\n{user_msg}\n\n"
+            f"Ответ CEO:\n{ceo_text}\n\n"
+            f"Ответ CFO:\n{cfo_text}\n\n"
+            f"Ответ CPO:\n{cpo_text}"
+        )
+        marketing_text = ask_gigachat("marketing", marketing_input)
+        replies.append(AgentReply(agent="marketing", text=marketing_text))
+
+        # Skeptic
+        skeptic_input = (
+            f"Запрос пользователя:\n{user_msg}\n\n"
+            f"Ответ CEO:\n{ceo_text}\n\n"
+            f"Ответ CFO:\n{cfo_text}\n\n"
+            f"Ответ CPO:\n{cpo_text}\n\n"
+            f"Ответ маркетинга:\n{marketing_text}"
+        )
+        skeptic_text = ask_gigachat("skeptic", skeptic_input)
+        replies.append(AgentReply(agent="skeptic", text=skeptic_text))
+
+    except Exception as e:
+        logger.exception("Error while calling GigaChat board chain")
+        # если что-то падает посреди цепочки — уже собранные ответы вернём,
+        # а для упавшей/следующих ролей можно добавить заглушку
+        replies.append(AgentReply(agent="error", text=f"Ошибка при обращении к GigaChat: {e}"))
 
     logger.info("Outgoing /api/board replies: %s", replies)
     return replies
