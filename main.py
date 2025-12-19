@@ -21,7 +21,7 @@ logger.setLevel(logging.INFO)
 log_path = os.path.join(LOG_DIR, "gigachat.log")
 handler = RotatingFileHandler(
     log_path,
-    maxBytes=5 * 1024 * 1024,  # 5 MB
+    maxBytes=5 * 1024 * 1024,
     backupCount=3,
     encoding="utf-8",
 )
@@ -42,16 +42,11 @@ GIGA_AUTH_KEY = os.getenv("GIGACHAT_AUTH_KEY")
 if not GIGA_AUTH_KEY:
     raise RuntimeError("Не задана переменная окружения GIGACHAT_AUTH_KEY")
 
-# Кэш токена в памяти процесса
 _access_token: str | None = None
 _access_exp: datetime | None = None
 
 
 def get_gigachat_token() -> str:
-    """
-    Получаем и кэшируем access token GigaChat.
-    Логируем запрос и ответ.
-    """
     global _access_token, _access_exp
 
     if _access_token and _access_exp and datetime.utcnow() < _access_exp:
@@ -145,10 +140,6 @@ AGENT_SYSTEM_PROMPTS = {
 
 
 def ask_gigachat(agent: str, user_msg: str) -> str:
-    """
-    Вызывает GigaChat с нужным system-prompt для конкретного агента.
-    Логирует запрос и ответ к /chat/completions.
-    """
     token = get_gigachat_token()
     system_prompt = AGENT_SYSTEM_PROMPTS[agent]
 
@@ -177,12 +168,7 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
         payload,
     )
 
-    resp = requests.post(
-        url,
-        headers=headers,
-        json=payload,
-        timeout=60,
-    )
+    resp = requests.post(url, headers=headers, json=payload, timeout=60)
 
     logger.info(
         "Chat response <- %s | agent=%s | status=%s | body=%s",
@@ -209,13 +195,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # ===== Модели =====
 
 class ChatRequest(BaseModel):
     message: str
     active_agents: list[str] | None = None
     history: list[str] | None = None
+    mode: str | None = None  # "initial" | "comment"
 
 
 class AgentReply(BaseModel):
@@ -238,57 +224,82 @@ class SingleAgentReply(BaseModel):
 @app.post("/api/board", response_model=List[AgentReply])
 async def board_chat(req: ChatRequest):
     """
-    Принимает сообщение пользователя и возвращает список ответов от активных агентов
-    (ceo, cfo, cpo, marketing, skeptic) + summary.
+    mode = "initial"  — первый раунд: активные агенты + summary.
+    mode = "comment"  — комментарий: только активные агенты, без нового summary.
     """
     user_msg = req.message
-    logger.info("Incoming /api/board message: %s | active_agents=%s", user_msg, req.active_agents)
+    mode = req.mode or "initial"
+    logger.info(
+        "Incoming /api/board message: %s | active_agents=%s | mode=%s",
+        user_msg,
+        req.active_agents,
+        mode,
+    )
 
-    # порядок ролей фиксированный
     order = ["ceo", "cfo", "cpo", "marketing", "skeptic"]
 
-    # если с фронта ничего не пришло — считаем, что включены все
     active = req.active_agents or order
-    # нормализуем: оставляем только допустимые роли и в правильном порядке
     active_ordered = [a for a in order if a in active]
 
     replies: list[AgentReply] = []
     ctx: dict[str, str] = {}
 
     try:
-        # последовательная цепочка только по активным агентам
-        for agent in active_ordered:
-            if agent == "ceo":
-                content_parts = [f"Запрос пользователя:\n{user_msg}"]
+        # общий способ собрать вход для агента
+        def build_agent_input(agent_name: str) -> str:
+            parts: list[str] = []
+
+            if mode == "comment":
+                # комментарий пользователя как приоритетный блок
+                parts.append(f"Текущий комментарий пользователя:\n{user_msg}")
+                if req.history:
+                    history_text = "\n".join(req.history[-20:])
+                    parts.append(
+                        "Фрагменты предыдущей дискуссии (хронологически):\n" + history_text
+                    )
+                parts.append(
+                    "Дай ответ на комментарий, учитывая контекст выше, но опираясь прежде всего на текущий комментарий."
+                )
             else:
-                content_parts = [f"Запрос пользователя:\n{user_msg}"]
-                # добавляем ответы уже высказавшихся агентов по порядку
+                # первый раунд: обычный запрос
+                parts.append(f"Запрос пользователя:\n{user_msg}")
+
+            # для всех раундов можно добавлять ответы других агентов (если они уже есть)
+            if ctx:
                 for prev in order:
                     if prev in ctx:
-                        content_parts.append(f"Ответ {prev.upper()}:\n{ctx[prev]}")
-            agent_input = "\n\n".join(content_parts)
+                        parts.append(f"Ответ {prev.upper()}:\n{ctx[prev]}")
 
+            return "\n\n".join(parts)
+
+        # последовательная цепочка по активным агентам
+        for agent in active_ordered:
+            agent_input = build_agent_input(agent)
             text = ask_gigachat(agent, agent_input)
             ctx[agent] = text
             replies.append(AgentReply(agent=agent, text=text))
 
-        # summary всегда есть, но видит только реально существующие ответы
-        summary_parts = [f"Запрос пользователя:\n{user_msg}"]
-        for agent in order:
-            if agent in ctx:
-                summary_parts.append(f"Ответ {agent.upper()}:\n{ctx[agent]}")
-        # при желании можно добавить историю
-        if req.history:
-            history_text = "\n".join(req.history[-20:])
-            summary_parts.append(f"История обсуждения (последние 20 сообщений):\n{history_text}")
+        # summary только в initial‑раунде
+        if mode == "initial":
+            summary_parts = [f"Запрос пользователя:\n{user_msg}"]
+            for agent in order:
+                if agent in ctx:
+                    summary_parts.append(f"Ответ {agent.upper()}:\n{ctx[agent]}")
+            if req.history:
+                history_text = "\n".join(req.history[-20:])
+                summary_parts.append(
+                    f"История обсуждения (последние 20 сообщений):\n{history_text}"
+                )
 
-        summary_input = "\n\n".join(summary_parts)
-        summary_text = ask_gigachat("summary", summary_input)
-        replies.append(AgentReply(agent="summary", text=summary_text))
+            summary_input = "\n\n".join(summary_parts)
+            summary_text = ask_gigachat("summary", summary_input)
+            replies.append(AgentReply(agent="summary", text=summary_text))
 
     except Exception as e:
         logger.exception("Error while calling GigaChat board chain")
-        replies.append(AgentReply(agent="error", text=f"Ошибка при обращении к GigaChat: {e}"))
+        replies.append(
+            AgentReply(agent="error", text=f"Ошибка при обращении к GigaChat: {e}")
+        )
 
     logger.info("Outgoing /api/board replies: %s", replies)
     return replies
@@ -302,7 +313,11 @@ async def single_agent(req: SingleAgentRequest):
     Перезапуск одной роли (ceo/cfo/.../skeptic/summary) по истории общения.
     История обрезается до 20 последних записей.
     """
-    logger.info("Incoming /api/agent: agent=%s | message=%s", req.agent, req.message)
+    logger.info(
+        "Incoming /api/agent: agent=%s | message=%s",
+        req.agent,
+        req.message,
+    )
 
     if req.agent not in AGENT_SYSTEM_PROMPTS:
         return SingleAgentReply(text=f"Неизвестный агент: {req.agent}")
@@ -318,7 +333,9 @@ async def single_agent(req: SingleAgentRequest):
         parts.append(f"История обсуждения (последние 20 сообщений):\n{history_text}")
 
     if not parts:
-        parts.append("Проанализируй ситуацию и предложи ещё одну конкретную идею/замечание от своей роли.")
+        parts.append(
+            "Проанализируй ситуацию и предложи ещё одну конкретную идею/замечание от своей роли."
+        )
 
     full_content = "\n\n".join(parts)
 
