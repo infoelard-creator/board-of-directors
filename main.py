@@ -242,13 +242,19 @@ class SummaryReply(BaseModel):
 
 # ===== JWT login =====
 
+from pydantic import BaseModel
+
+class LoginRequest(BaseModel):
+    user_id: str
+
 @app.post("/api/login", response_model=TokenResponse)
-async def login(user_id: str):
+async def login(body: LoginRequest):
     """
-    Простой логин: принимает user_id (строка), возвращает JWT-токен.
+    Простой логин: принимает user_id в JSON, возвращает JWT-токен.
     """
-    token = create_access_token(user_id)
+    token = create_access_token(body.user_id)
     return TokenResponse(access_token=token)
+
 
 
 # ===== Основная цепочка совета директоров =====
