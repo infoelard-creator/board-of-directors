@@ -225,6 +225,27 @@
             line-height: 1.5;
         }
 
+        .message-content .line-item {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 4px 8px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .message-content .line-label {
+            font-weight: 600;
+            color: var(--color-text);
+            white-space: nowrap;
+        }
+
+        .message-content .line-value {
+            color: #374151;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+
+        
         .input-area {
             padding: 20px 24px;
             border-top: 1px solid var(--color-border);
@@ -643,31 +664,82 @@ window.addEventListener("load", initAuth);
         messageEl.className = `message ${sender}`;
         if (agentType) messageEl.classList.add(agentType);
 
-        let content = text;
+        let content;
+    
         if (sender === 'agent') {
             const agent = agents[agentType];
-            content = `<div class="message-header"><span class="agent-badge" style="background: var(--color-${agentType})"></span>${agent.name}</div><div class="message-content">${escapeHtml(text)}</div>`;
+
+            // для агентов используем структурный форматтер
+            const formatted = formatBoardStyle(text);
+
+            content = `
+              <div class="message-header">
+                <span class="agent-badge" style="background: var(--color-${agentType})"></span>
+                ${agent.name}
+              </div>
+              <div class="message-content">
+                ${formatted}
+              </div>
+            `;
+
             chatHistory.push(`${agentType.toUpperCase()}: ${text}`);
         } else {
-            content = `<div class="message-content">${escapeHtml(text)}</div>`;
+            // для пользователя просто сохраняем переводы строк
+            content = `
+              <div class="message-content">
+                ${formatWithLineBreaks(text)}
+              </div>
+            `;
             chatHistory.push(`USER: ${text}`);
         }
 
-        if (chatHistory.length > 50) {
-            chatHistory = chatHistory.slice(-50);
-        }
-
-        messageEl.innerHTML = content;
-        chatArea.appendChild(messageEl);
-        chatArea.scrollTop = chatArea.scrollHeight;
+    if (chatHistory.length > 50) {
+        chatHistory = chatHistory.slice(-50);
     }
+
+    messageEl.innerHTML = content;
+    chatArea.appendChild(messageEl);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
 
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
+    function formatWithLineBreaks(text) {
+    return escapeHtml(text).replace(/(\r\n|\r|\n)/g, '<br>');
+}
 
+function formatBoardStyle(text) {
+    const rawLines = text.split(/\r?\n/).map(l => l.trim());
+    const lines = rawLines.filter(Boolean);
+
+    const items = lines.map(line => {
+        // 1) [Суть идеи] — текст
+        const match = line.match(/^\d+\)\s*\[([^\]]+)\]\s*[—-]\s*(.+)$/);
+        if (!match) {
+            // просто экранируем текст и заменяем переводы на <br>
+            return `<p>${escapeHtml(line).replace(/(\r\n|\r|\n)/g, '<br>')}</p>`;
+        }
+
+        const title = escapeHtml(match[1]);
+        const value = escapeHtml(match[2]);
+        
+        return `
+            <div class="line-item">
+                <div class="line-label">${title}</div>
+                <div class="line-value">${value}</div>
+            </div>
+        `;
+    });
+
+    return items.join('');
+}
+
+
+    
     async function sendMessage() {
         const text = messageInput.value.trim();
         if (!text || isLoading) return;
