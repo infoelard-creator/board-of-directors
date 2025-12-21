@@ -13,6 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import logging
 from logging.handlers import RotatingFileHandler
+from db import init_db, get_db, create_user_if_not_exists  # наши функции работы с БД
+from sqlalchemy.orm import Session
 
 # ===== Логирование =====
 
@@ -203,6 +205,11 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
 
+@app.on_event("startup")
+def on_startup():
+    # создаём таблицу users, если её ещё нет
+    init_db()
+    
 origins = [
     "http://45.151.31.180:8080",
     "http://localhost:8080",
