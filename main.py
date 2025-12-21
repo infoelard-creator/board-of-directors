@@ -265,13 +265,21 @@ from pydantic import BaseModel
 class LoginRequest(BaseModel):
     user_id: str
 
-@app.post("/api/login", response_model=TokenResponse)
-async def login(body: LoginRequest):
+@app.post("/api/login", response_model=TokenResponse) 
+async def login( 
+    body: LoginRequest, 
+    db: Session = Depends(get_db), 
+): 
+    """ Простой логин: принимает user_id в JSON, 
+    создаёт запись в таблице users (если её ещё нет) 
+    и возвращает JWT-токен. 
     """
-    Простой логин: принимает user_id в JSON, возвращает JWT-токен.
-    """
-    token = create_access_token(body.user_id)
+    # создаём пользователя в БД, если его ещё нет 
+    create_user_if_not_exists(db, body.user_id) 
+    
+    token = create_access_token(body.user_id) 
     return TokenResponse(access_token=token)
+   
 
 
 
