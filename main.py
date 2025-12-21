@@ -344,7 +344,7 @@ async def board_chat(
     )
 
     order = ["ceo", "cfo", "cpo", "marketing", "skeptic"]
-    active = req.active_agents or order
+    active = req.active_agents if req.active_agents is not None else order
     active_ordered = [a for a in order if a in active]
 
     replies: list[AgentReply] = []
