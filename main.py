@@ -53,7 +53,7 @@ _access_token: Optional[str] = None
 _access_exp: Optional[datetime] = None
 
 # ===== КЭШ ПАРСЕРА ПО СЕССИЯМ =====
-_parsed_cache: dict[str, dict] = {}  # {cache_key: ParsedRequest}
+_parsed_cache: dict[str, "ParsedRequest"] = {}  # {cache_key: ParsedRequest}
 
 
 def get_cache_key(user_id: str, message: str) -> str:
@@ -579,9 +579,10 @@ async def board_chat(
             compressed = compress_history(req.history, max_items=5)
             if compressed:
                 parts.append(
-                    f"
-ВЫДЕЖКА ИЗ ИСТОРИИ (последние 5 сообщений):
-{compressed}"
+                    "
+ВЫДЕРЖКА ИЗ ИСТОРИИ (последние 5 сообщений):
+"
+                    f"{compressed}"
                 )
 
             if ctx:
@@ -615,7 +616,7 @@ async def board_chat(
             if compressed:
                 summary_parts.append(
                     "
-ВЫДЕЖКА ИЗ ИСТОРИИ:
+ВЫДЕРЖКА ИЗ ИСТОРИИ:
 " + compressed
                 )
 
@@ -675,9 +676,11 @@ async def single_agent(
 
     compressed = compress_history(req.history, max_items=5)
     if compressed:
-        parts.append("
-ВЫДЕЖКА ИЗ ИСТОРИИ (последние 5):
-" + compressed)
+        parts.append(
+            "
+ВЫДЕРЖКА ИЗ ИСТОРИИ (последние 5):
+" + compressed
+        )
 
     if not parts:
         parts.append(
