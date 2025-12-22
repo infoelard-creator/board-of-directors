@@ -132,93 +132,57 @@ AGENT_PARAMS = {
 
 AGENT_SYSTEM_PROMPTS = {
     "ceo": (
-        "РОЛЬ: CEO. Анализируешь идею из ввода пользователя.
-"
-        "ВЫХОД (строго в этом порядке):
-"
-        "1) [Суть идеи] — переформулировка идеи в 1 строке
-"
-        "2) [Ход] — твой стратегический ход для масштабирования
-"
-        "3) [Verdict] — GO или NO-GO
-"
-        "4) [Confidence] — % уверенности
-"
+        "РОЛЬ: CEO. Анализируешь идею из ввода пользователя.\n"
+        "ВЫХОД (строго в этом порядке):\n"
+        "1) [Суть идеи] — переформулировка идеи в 1 строке\n"
+        "2) [Ход] — твой стратегический ход для масштабирования\n"
+        "3) [Verdict] — GO или NO-GO\n"
+        "4) [Confidence] — % уверенности\n"
         "Фокусируйся на LTV/CAC, runway и стратегии роста из конкретного ввода."
     ),
     "cfo": (
-        "РОЛЬ: CFO. Оцениваешь финансовую валидацию идеи пользователя.
-"
-        "ВЫХОД (строго в этом порядке):
-"
-        "1) [Гипотеза] — что нужно проверить за деньги
-"
-        "2) [Бюджет] — минимальный бюджет для теста (в USD)
-"
-        "3) [Verdict] — FAST или SLOW
-"
-        "4) [Confidence] — % уверенности
-"
+        "РОЛЬ: CFO. Оцениваешь финансовую валидацию идеи пользователя.\n"
+        "ВЫХОД (строго в этом порядке):\n"
+        "1) [Гипотеза] — что нужно проверить за деньги\n"
+        "2) [Бюджет] — минимальный бюджет для теста (в USD)\n"
+        "3) [Verdict] — FAST или SLOW\n"
+        "4) [Confidence] — % уверенности\n"
         "Ищи метрику, которую можно валидировать за 2 недели дёшево."
     ),
     "cpo": (
-        "РОЛЬ: CPO. Ищешь конкурентный дефицит (Moat) в идее пользователя.
-"
-        "ВЫХОД (строго в этом порядке):
-"
-        "1) [Продукт] — переформулировка функции в 1 строке
-"
-        "2) [Moat] — что сложно скопировать за неделю
-"
-        "3) [Verdict] — SAFE или VULNERABLE
-"
-        "4) [Confidence] — % уверенности
-"
+        "РОЛЬ: CPO. Ищешь конкурентный дефицит (Moat) в идее пользователя.\n"
+        "ВЫХОД (строго в этом порядке):\n"
+        "1) [Продукт] — переформулировка функции в 1 строке\n"
+        "2) [Moat] — что сложно скопировать за неделю\n"
+        "3) [Verdict] — SAFE или VULNERABLE\n"
+        "4) [Confidence] — % уверенности\n"
         "Опирайся на конкретные функции из ввода, не используй абстракции."
     ),
     "marketing": (
-        "РОЛЬ: VP Marketing. Придумываешь канал роста для этой идеи.
-"
-        "ВЫХОД (строго в этом порядке):
-"
-        "1) [Аудитория] — целевая аудитория из ввода
-"
-        "2) [Хак] — конкретный гроуз-хак (не 'маркетинг')
-"
-        "3) [Verdict] — SCALABLE или MANUAL
-"
-        "4) [Confidence] — % уверенности
-"
+        "РОЛЬ: VP Marketing. Придумываешь канал роста для этой идеи.\n"
+        "ВЫХОД (строго в этом порядке):\n"
+        "1) [Аудитория] — целевая аудитория из ввода\n"
+        "2) [Хак] — конкретный гроуз-хак (не 'маркетинг')\n"
+        "3) [Verdict] — SCALABLE или MANUAL\n"
+        "4) [Confidence] — % уверенности\n"
         "Предложи механику, которая работает без найма людей."
     ),
     "skeptic": (
-        "РОЛЬ: Skeptic. Находишь фатальную дыру в идее пользователя.
-"
-        "ВЫХОД (строго в этом порядке):
-"
-        "1) [Слабое место] — самое уязвимое утверждение в идее
-"
-        "2) [Краш-тест] — как это убить за <$1K
-"
-        "3) [Verdict] — FATAL или FIXABLE
-"
-        "4) [Confidence] — % уверенности
-"
+        "РОЛЬ: Skeptic. Находишь фатальную дыру в идее пользователя.\n"
+        "ВЫХОД (строго в этом порядке):\n"
+        "1) [Слабое место] — самое уязвимое утверждение в идее\n"
+        "2) [Краш-тест] — как это убить за <$1K\n"
+        "3) [Verdict] — FATAL или FIXABLE\n"
+        "4) [Confidence] — % уверенности\n"
         "Атакуй конкретные утверждения пользователя, не общие критики."
     ),
     "summary": (
-        "РОЛЬ: Модератор. Синтезируешь мнения совета по ЕДИНОЙ идее.
-"
-        "ВЫХОД (строго в этом порядке):
-"
-        "1) [Идея] — суть в 1 строке
-"
-        "2) [Плюсы] — 2-3 лучших инсайта совета
-"
-        "3) [Риски] — 2-3 главных опасности
-"
-        "4) [ИТОГ] — Перспективно ли? (Recommend Go/No-Go + % уверенности)
-"
+        "РОЛЬ: Модератор. Синтезируешь мнения совета по ЕДИНОЙ идее.\n"
+        "ВЫХОД (строго в этом порядке):\n"
+        "1) [Идея] — суть в 1 строке\n"
+        "2) [Плюсы] — 2-3 лучших инсайта совета\n"
+        "3) [Риски] — 2-3 главных опасности\n"
+        "4) [ИТОГ] — Перспективно ли? (Recommend Go/No-Go + % уверенности)\n"
         "Пиши структурировано, ссылайся на мнения агентов."
     ),
 }
@@ -226,40 +190,23 @@ AGENT_SYSTEM_PROMPTS = {
 # ===== ПАРСЕР ИСХОДНОГО ЗАПРОСА =====
 
 PARSER_SYSTEM_PROMPT = (
-    "РОЛЬ: Parser. Структурируешь исходный запрос пользователя.
-"
-    "ВЫХОД (JSON, строго в этом формате):
-"
-    "{
-"
-    '  "intent": "validate_idea|find_risks|scale_strategy|compare_ideas|other",
-'
-    '  "domain": "product|finance|marketing|strategy|operations|hr",
-'
-    '  "key_points": ["точка 1", "точка 2"],
-'
-    '  "assumptions": ["предположение 1"],
-'
-    '  "constraints": ["ограничение 1"],
-'
-    '  "summary": "одно предложение о сути запроса"
-'
-    "}
-"
-    "Требования:
-"
-    "- intent: конкретная цель пользователя
-"
-    "- domain: один из списка
-"
-    "- key_points: 2-5 главных утверждений
-"
-    "- assumptions: что неявно предполагает пользователь
-"
-    "- constraints: бюджет, сроки, команда, ресурсы
-"
-    "- summary: суть в 1 строке
-"
+    "РОЛЬ: Parser. Структурируешь исходный запрос пользователя.\n"
+    "ВЫХОД (JSON, строго в этом формате):\n"
+    "{\n"
+    "  \"intent\": \"validate_idea|find_risks|scale_strategy|compare_ideas|other\",\n"
+    "  \"domain\": \"product|finance|marketing|strategy|operations|hr\",\n"
+    "  \"key_points\": [\"точка 1\", \"точка 2\"],\n"
+    "  \"assumptions\": [\"предположение 1\"],\n"
+    "  \"constraints\": [\"ограничение 1\"],\n"
+    "  \"summary\": \"одно предложение о сути запроса\"\n"
+    "}\n"
+    "Требования:\n"
+    "- intent: конкретная цель пользователя\n"
+    "- domain: один из списка\n"
+    "- key_points: 2-5 главных утверждений\n"
+    "- assumptions: что неявно предполагает пользователь\n"
+    "- constraints: бюджет, сроки, команда, ресурсы\n"
+    "- summary: суть в 1 строке\n"
     "Отвечай ТОЛЬКО JSON, без комментариев."
 )
 
@@ -359,8 +306,7 @@ def compress_history(history: Optional[List[str]], max_items: int = 5) -> str:
     if not history:
         return ""
     recent = history[-max_items:]
-    return "
-".join(recent)
+    return "\n".join(recent)
 
 
 def ask_gigachat(agent: str, user_msg: str) -> str:
@@ -535,43 +481,51 @@ async def board_chat(
         )
 
         for agent in active_ordered:
+            key_points_str = (', '.join(parsed_request.key_points) 
+                            if parsed_request.key_points else 'нет')
+            assumptions_str = (', '.join(parsed_request.assumptions) 
+                             if parsed_request.assumptions else 'нет')
+            constraints_str = (', '.join(parsed_request.constraints) 
+                             if parsed_request.constraints else 'нет')
+            summary_str = (parsed_request.summary or 
+                          parsed_request.original_message[:200])
+            
             parts: List[str] = [
                 "СТРУКТУРИРОВАННЫЙ ЗАПРОС (из парсера):",
                 f"• Цель: {parsed_request.intent}",
                 f"• Область: {parsed_request.domain}",
-                f"• Ключевые точки: {', '.join(parsed_request.key_points) if parsed_request.key_points else 'нет'}",
-                f"• Предположения: {', '.join(parsed_request.assumptions) if parsed_request.assumptions else 'нет'}",
-                f"• Ограничения: {', '.join(parsed_request.constraints) if parsed_request.constraints else 'нет'}",
-                f"• Краткое резюме: {parsed_request.summary or parsed_request.original_message[:200]}",
+                f"• Ключевые точки: {key_points_str}",
+                f"• Предположения: {assumptions_str}",
+                f"• Ограничения: {constraints_str}",
+                f"• Краткое резюме: {summary_str}",
             ]
 
             compressed = compress_history(req.history, max_items=5)
             if compressed:
                 parts.append(
-                    "
-ВЫДЕЖКА ИЗ ИСТОРИИ (последние 5 сообщений):
-" + compressed
+                    "\nВЫДЕЖКА ИЗ ИСТОРИИ (последние 5 сообщений):\n" + compressed
                 )
 
             if ctx:
-                parts.append("
-МНЕНИЯ ДРУГИХ ЧЛЕНОВ СОВЕТА:")
+                parts.append("\nМНЕНИЯ ДРУГИХ ЧЛЕНОВ СОВЕТА:")
                 for prev_agent in order:
                     if prev_agent in ctx:
                         parts.append(f"{prev_agent.upper()}: {ctx[prev_agent]}")
 
-            agent_input = "
-".join(parts)
+            agent_input = "\n".join(parts)
             text = ask_gigachat(agent, agent_input)
             ctx[agent] = text
             replies.append(AgentReply(agent=agent, text=text))
 
         if mode == "initial":
+            key_points_str = (', '.join(parsed_request.key_points) 
+                            if parsed_request.key_points else 'нет')
+            
             summary_parts: List[str] = [
                 "СТРУКТУРИРОВАННЫЙ ЗАПРОС:",
                 f"• Цель: {parsed_request.intent}",
                 f"• Область: {parsed_request.domain}",
-                f"• Ключевые точки: {', '.join(parsed_request.key_points) if parsed_request.key_points else 'нет'}",
+                f"• Ключевые точки: {key_points_str}",
                 "",
                 "МНЕНИЯ СОВЕТА:",
             ]
@@ -581,12 +535,9 @@ async def board_chat(
 
             compressed = compress_history(req.history, max_items=5)
             if compressed:
-                summary_parts.append("
-ВЫДЕЖКА ИЗ ИСТОРИИ:
-" + compressed)
+                summary_parts.append("\nВЫДЕЖКА ИЗ ИСТОРИИ:\n" + compressed)
 
-            summary_input = "
-".join(summary_parts)
+            summary_input = "\n".join(summary_parts)
             summary_text = ask_gigachat("summary", summary_input)
             replies.append(AgentReply(agent="summary", text=summary_text))
 
@@ -631,31 +582,38 @@ async def single_agent(
             parsed_request.intent,
             parsed_request.domain,
         )
+        
+        key_points_str = (', '.join(parsed_request.key_points) 
+                        if parsed_request.key_points else 'нет')
+        assumptions_str = (', '.join(parsed_request.assumptions) 
+                         if parsed_request.assumptions else 'нет')
+        constraints_str = (', '.join(parsed_request.constraints) 
+                         if parsed_request.constraints else 'нет')
+        summary_str = (parsed_request.summary or 
+                      parsed_request.original_message[:200])
+        
         parts.extend(
             [
                 "СТРУКТУРИРОВАННЫЙ ЗАПРОС:",
                 f"• Цель: {parsed_request.intent}",
                 f"• Область: {parsed_request.domain}",
-                f"• Ключевые точки: {', '.join(parsed_request.key_points) if parsed_request.key_points else 'нет'}",
-                f"• Предположения: {', '.join(parsed_request.assumptions) if parsed_request.assumptions else 'нет'}",
-                f"• Ограничения: {', '.join(parsed_request.constraints) if parsed_request.constraints else 'нет'}",
-                f"• Краткое резюме: {parsed_request.summary or parsed_request.original_message[:200]}",
+                f"• Ключевые точки: {key_points_str}",
+                f"• Предположения: {assumptions_str}",
+                f"• Ограничения: {constraints_str}",
+                f"• Краткое резюме: {summary_str}",
             ]
         )
 
     compressed = compress_history(req.history, max_items=5)
     if compressed:
-        parts.append("
-ВЫДЕЖКА ИЗ ИСТОРИИ (последние 5):
-" + compressed)
+        parts.append("\nВЫДЕЖКА ИЗ ИСТОРИИ (последние 5):\n" + compressed)
 
     if not parts:
         parts.append(
             "Проанализируй ситуацию и предложи конкретную идею/замечание от своей роли."
         )
 
-    full_content = "
-".join(parts)
+    full_content = "\n".join(parts)
 
     try:
         text = ask_gigachat(req.agent, full_content)
@@ -689,12 +647,8 @@ async def recalc_summary(
 
     summary_input = (
         "Вот выдержка из истории обсуждения совета директоров "
-        "(последние 5 сообщений):
-
-"
-        f"{compressed}
-
-"
+        "(последние 5 сообщений):\n\n"
+        f"{compressed}\n\n"
         "Подведи обновлённые итоги по инструкции из system-подсказки."
     )
 
