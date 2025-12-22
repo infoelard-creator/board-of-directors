@@ -548,9 +548,9 @@ async def board_chat(
             compressed = compress_history(req.history, max_items=5)
             if compressed:
                 parts.append(
-                    f"
+                    "
 ВЫДЕЖКА ИЗ ИСТОРИИ (последние 5 сообщений):
-{compressed}"
+" + compressed
                 )
 
             if ctx:
