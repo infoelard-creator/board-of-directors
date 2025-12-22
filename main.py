@@ -53,7 +53,7 @@ _access_token: Optional[str] = None
 _access_exp: Optional[datetime] = None
 
 # ===== КЭШ ПАРСЕРА ПО СЕССИЯМ =====
-_parsed_cache: dict[str, "ParsedRequest"] = {}  # {cache_key: ParsedRequest}
+_parsed_cache: dict[str, "ParsedRequest"] = {}
 
 
 def get_cache_key(user_id: str, message: str) -> str:
@@ -75,7 +75,6 @@ def cache_parse(user_id: str, message: str, parsed: "ParsedRequest") -> None:
     """Кэширует парс запроса."""
     key = get_cache_key(user_id, message)
     _parsed_cache[key] = parsed
-    # Ограничиваем кэш (макс 1000 записей)
     if len(_parsed_cache) > 1000:
         keys_to_delete = list(_parsed_cache.keys())[:-500]
         for k in keys_to_delete:
@@ -123,36 +122,12 @@ def get_gigachat_token() -> str:
 # ===== ОПТИМИЗИРОВАННЫЕ ПАРАМЕТРЫ И ПРОМПТЫ =====
 
 AGENT_PARAMS = {
-    "ceo": {
-        "temperature": 0.4,
-        "max_tokens": 150,
-        "top_p": 0.9,
-    },
-    "cfo": {
-        "temperature": 0.3,
-        "max_tokens": 150,
-        "top_p": 0.85,
-    },
-    "cpo": {
-        "temperature": 0.5,
-        "max_tokens": 150,
-        "top_p": 0.9,
-    },
-    "marketing": {
-        "temperature": 0.65,
-        "max_tokens": 160,
-        "top_p": 0.95,
-    },
-    "skeptic": {
-        "temperature": 0.6,
-        "max_tokens": 150,
-        "top_p": 0.9,
-    },
-    "summary": {
-        "temperature": 0.5,
-        "max_tokens": 300,
-        "top_p": 0.9,
-    },
+    "ceo": {"temperature": 0.4, "max_tokens": 150, "top_p": 0.9},
+    "cfo": {"temperature": 0.3, "max_tokens": 150, "top_p": 0.85},
+    "cpo": {"temperature": 0.5, "max_tokens": 150, "top_p": 0.9},
+    "marketing": {"temperature": 0.65, "max_tokens": 160, "top_p": 0.95},
+    "skeptic": {"temperature": 0.6, "max_tokens": 150, "top_p": 0.9},
+    "summary": {"temperature": 0.5, "max_tokens": 300, "top_p": 0.9},
 }
 
 AGENT_SYSTEM_PROMPTS = {
@@ -306,7 +281,6 @@ def parse_user_request(user_msg: str, user_id: str = "anonymous") -> ParsedReque
     Парсит исходный запрос пользователя в структурированную форму.
     Использует кэш для экономии API вызовов.
     """
-    # ШАГ 0: проверяем кэш
     cached = get_cached_parse(user_id, user_msg)
     if cached:
         return cached
@@ -376,9 +350,7 @@ def parse_user_request(user_msg: str, user_id: str = "anonymous") -> ParsedReque
         confidence=0.85,
     )
 
-    # Сохраняем в кэш
     cache_parse(user_id, user_msg, parsed)
-
     return parsed
 
 
@@ -394,13 +366,12 @@ def compress_history(history: Optional[List[str]], max_items: int = 5) -> str:
 def ask_gigachat(agent: str, user_msg: str) -> str:
     """
     Запрос к GigaChat с оптимизированными параметрами.
-    user_msg уже содержит все необходимые данные (структурированный запрос, контекст, историю).
+    user_msg уже содержит все необходимые данные.
     """
     token = get_gigachat_token()
     system_prompt = AGENT_SYSTEM_PROMPTS[agent]
     params = AGENT_PARAMS[agent]
 
-    # user_msg уже полный - просто передаём
     agent_input = user_msg
 
     payload = {
@@ -555,7 +526,6 @@ async def board_chat(
     ctx: dict[str, str] = {}
 
     try:
-        # ШАГ 0: парсим исходный запрос (с кэшем)
         parsed_request = parse_user_request(user_msg, user_id=user_id)
         logger.info(
             "Parsed request | intent=%s | domain=%s | key_points=%s",
@@ -564,7 +534,6 @@ async def board_chat(
             parsed_request.key_points,
         )
 
-        # ШАГ 1: ответы агентов
         for agent in active_ordered:
             parts: List[str] = [
                 "СТРУКТУРИРОВАННЫЙ ЗАПРОС (из парсера):",
@@ -579,10 +548,9 @@ async def board_chat(
             compressed = compress_history(req.history, max_items=5)
             if compressed:
                 parts.append(
-                    "
-ВЫДЕРЖКА ИЗ ИСТОРИИ (последние 5 сообщений):
-"
-                    f"{compressed}"
+                    f"
+ВЫДЕЖКА ИЗ ИСТОРИИ (последние 5 сообщений):
+{compressed}"
                 )
 
             if ctx:
@@ -598,7 +566,6 @@ async def board_chat(
             ctx[agent] = text
             replies.append(AgentReply(agent=agent, text=text))
 
-        # ШАГ 2: summary (только для initial)
         if mode == "initial":
             summary_parts: List[str] = [
                 "СТРУКТУРИРОВАННЫЙ ЗАПРОС:",
@@ -614,11 +581,9 @@ async def board_chat(
 
             compressed = compress_history(req.history, max_items=5)
             if compressed:
-                summary_parts.append(
-                    "
-ВЫДЕРЖКА ИЗ ИСТОРИИ:
-" + compressed
-                )
+                summary_parts.append("
+ВЫДЕЖКА ИЗ ИСТОРИИ:
+" + compressed)
 
             summary_input = "
 ".join(summary_parts)
@@ -631,7 +596,11 @@ async def board_chat(
             AgentReply(agent="error", text=f"Ошибка при обращении к GigaChat: {e}")
         )
 
-    logger.info("Outgoing /api/board | agents=%s | reply_count=%d", active_ordered, len(replies))
+    logger.info(
+        "Outgoing /api/board | agents=%s | reply_count=%d",
+        active_ordered,
+        len(replies),
+    )
     return replies
 
 
@@ -676,11 +645,9 @@ async def single_agent(
 
     compressed = compress_history(req.history, max_items=5)
     if compressed:
-        parts.append(
-            "
-ВЫДЕРЖКА ИЗ ИСТОРИИ (последние 5):
-" + compressed
-        )
+        parts.append("
+ВЫДЕЖКА ИЗ ИСТОРИИ (последние 5):
+" + compressed)
 
     if not parts:
         parts.append(
@@ -706,7 +673,7 @@ async def recalc_summary(
     request: Request,
     user_id: str = Depends(verify_token),
 ):
-    """Пересчёт итогов на основе последней истории обсуждения (без лишнего парсера)."""
+    """Пересчёт итогов на основе последней истории обсуждения."""
     logger.info(
         "Incoming /api/summary | history_len=%s | user=%s",
         len(req.history) if req.history else 0,
@@ -720,8 +687,6 @@ async def recalc_summary(
             text="Недостаточно истории для пересчёта итогов. Сначала проведите обсуждение."
         )
 
-    # Для summary не парсим - используем только историю
-    # Все ответы агентов уже структурированы
     summary_input = (
         "Вот выдержка из истории обсуждения совета директоров "
         "(последние 5 сообщений):
