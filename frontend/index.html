@@ -16,10 +16,18 @@
             --color-marketing: #3d2d5a;
             --color-skeptic: #8b4513;
             --color-summary: #555555;
+            
+            /* Status colors */
+            --color-success: #22c55e;
+            --color-danger: #ef4444;
+            --color-warning: #f59e0b;
+            --color-info: #3b82f6;
         }
+        
         html, body {
             height: 100%;
         }
+        
         * {
             box-sizing: border-box;
         }
@@ -160,11 +168,12 @@
         }
 
         .message {
-            padding: 12px 16px;
-            border-radius: 8px;
-            max-width: 80%;
+            padding: 16px;
+            border-radius: 12px;
+            max-width: clamp(280px, 80%, 700px);
             word-wrap: break-word;
             animation: slideIn 300ms ease-out;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
 
         @keyframes slideIn {
@@ -187,72 +196,196 @@
 
         .message.agent {
             align-self: flex-start;
-            background: var(--color-secondary);
+            background: white;
             border: 1px solid var(--color-border);
             position: relative;
         }
 
+        /* НОВОЕ: Заголовок агента с иконкой */
         .message-header {
             font-weight: 600;
-            font-size: 13px;
-            margin-bottom: 6px;
+            font-size: 14px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid;
         }
 
-        .message.agent .message-header {
-            color: var(--color-primary);
+        .agent-icon {
+            font-size: 18px;
+            line-height: 1;
         }
 
-        .agent-badge {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 4px;
+        .message.agent.ceo .message-header { 
+            color: var(--color-ceo); 
+            border-bottom-color: var(--color-ceo);
+        }
+        .message.agent.cfo .message-header { 
+            color: var(--color-cfo); 
+            border-bottom-color: var(--color-cfo);
+        }
+        .message.agent.cpo .message-header { 
+            color: var(--color-cpo); 
+            border-bottom-color: var(--color-cpo);
+        }
+        .message.agent.marketing .message-header { 
+            color: var(--color-marketing); 
+            border-bottom-color: var(--color-marketing);
+        }
+        .message.agent.skeptic .message-header { 
+            color: var(--color-skeptic); 
+            border-bottom-color: var(--color-skeptic);
+        }
+        .message.agent.summary .message-header { 
+            color: var(--color-summary); 
+            border-bottom-color: var(--color-summary);
         }
 
-        .message.agent.ceo .message-header { color: var(--color-ceo); }
-        .message.agent.cfo .message-header { color: var(--color-cfo); }
-        .message.agent.cpo .message-header { color: var(--color-cpo); }
-        .message.agent.marketing .message-header { color: var(--color-marketing); }
-        .message.agent.skeptic .message-header { color: var(--color-skeptic); }
-        .message.agent.summary .message-header { color: var(--color-summary); }
-
+        /* НОВОЕ: Структурированный контент */
         .message-content {
             font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .content-section {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.02);
+            border-radius: 6px;
+            border-left: 3px solid;
+        }
+
+        .content-section.ceo { border-left-color: var(--color-ceo); }
+        .content-section.cfo { border-left-color: var(--color-cfo); }
+        .content-section.cpo { border-left-color: var(--color-cpo); }
+        .content-section.marketing { border-left-color: var(--color-marketing); }
+        .content-section.skeptic { border-left-color: var(--color-skeptic); }
+        .content-section.summary { border-left-color: var(--color-summary); }
+
+        .section-label {
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .section-value {
+            font-size: 14px;
+            color: var(--color-text);
             line-height: 1.5;
         }
 
-        .message-content .line-item {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 4px 8px;
-            margin-bottom: 6px;
-            font-size: 13px;
-        }
-
-        .message-content .line-label {
+        /* НОВОЕ: Бейджи для вердиктов */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
             font-weight: 600;
-            color: var(--color-text);
-            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .message-content .line-value {
+        .badge.success {
+            background: rgba(34, 197, 94, 0.15);
+            color: #16a34a;
+        }
+
+        .badge.danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #dc2626;
+        }
+
+        .badge.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #d97706;
+        }
+
+        .badge.info {
+            background: rgba(59, 130, 246, 0.15);
+            color: #2563eb;
+        }
+
+        /* НОВОЕ: Прогресс-бар для Confidence */
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-success), var(--color-info));
+            border-radius: 4px;
+            transition: width 600ms ease-out;
+        }
+
+        .confidence-text {
+            font-size: 13px;
+            font-weight: 600;
             color: #374151;
-            word-wrap: break-word;
-            word-break: break-word;
+            margin-top: 4px;
         }
 
-        
+        /* НОВОЕ: Skeleton loader для агентов */
+        .skeleton-message {
+            align-self: flex-start;
+            max-width: clamp(280px, 80%, 700px);
+            padding: 16px;
+            border-radius: 12px;
+            background: white;
+            border: 1px solid var(--color-border);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .skeleton-header {
+            width: 120px;
+            height: 20px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+
+        .skeleton-line {
+            height: 12px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-line.short {
+            width: 60%;
+        }
+
+        .skeleton-line.medium {
+            width: 80%;
+        }
+
+        .skeleton-line.long {
+            width: 100%;
+        }
+
         .input-area {
             padding: 20px 24px;
             border-top: 1px solid var(--color-border);
             display: flex;
             gap: 12px;
             background: white;
-            flex-shrink: 0; 
+            flex-shrink: 0;
         }
 
         .summary-btn {
@@ -266,10 +399,12 @@
             white-space: nowrap;
             flex-shrink: 0;
             margin-right: 8px;
+            transition: all 200ms;
         }
 
         .summary-btn:hover {
             background: #d1d5db;
+            transform: translateY(-1px);
         }
 
         .input-field {
@@ -297,14 +432,16 @@
             border-radius: 6px;
             cursor: pointer;
             font-weight: 500;
-            transition: background 200ms;
+            transition: all 200ms;
             height: 44px;
             display: flex;
             align-items: center;
         }
 
-        .send-btn:hover {
+        .send-btn:hover:not(:disabled) {
             background: #1a6472;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(32, 128, 144, 0.3);
         }
 
         .send-btn:disabled {
@@ -342,6 +479,13 @@
             color: #999;
             font-size: 16px;
             text-align: center;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            opacity: 0.3;
         }
 
         @media (max-width: 768px) {
@@ -460,7 +604,10 @@
             </div>
 
             <div class="chat-area" id="chatArea">
-                <div class="empty-state">Начните обсуждение — опишите идею или вопрос для совета</div>
+                <div class="empty-state">
+                    <div class="empty-state-icon">💼</div>
+                    <div>Начните обсуждение — опишите идею или вопрос для совета</div>
+                </div>
             </div>
 
             <div class="input-area">
@@ -486,62 +633,59 @@
     }
     setVh();
     window.addEventListener('resize', setVh);
-let authToken = null;
 
-function generateOrGetUserId() {
-    let userId = localStorage.getItem("board_user_id");
-    if (!userId) {
-        userId = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-        localStorage.setItem("board_user_id", userId);
-    }
-    return userId;
-}
+    let authToken = null;
 
-async function initAuth() {
-    const userId = generateOrGetUserId();
-
-    try {
-        const response = await fetch("/api/login", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ user_id: userId }),
-        });
-
-        if (!response.ok) {
-            console.error("Auth failed:", response.status, response.statusText);
-            return;
+    function generateOrGetUserId() {
+        let userId = localStorage.getItem("board_user_id");
+        if (!userId) {
+            userId = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+            localStorage.setItem("board_user_id", userId);
         }
-
-        const data = await response.json();
-        authToken = data.access_token;
-        console.log("Auth OK for", userId);
-    } catch (e) {
-        console.error("Auth error:", e);
+        return userId;
     }
-}
 
-window.addEventListener("load", initAuth);
+    async function initAuth() {
+        const userId = generateOrGetUserId();
+
+        try {
+            const response = await fetch("/api/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ user_id: userId }),
+            });
+
+            if (!response.ok) {
+                console.error("Auth failed:", response.status, response.statusText);
+                return;
+            }
+
+            const data = await response.json();
+            authToken = data.access_token;
+            console.log("Auth OK for", userId);
+        } catch (e) {
+            console.error("Auth error:", e);
+        }
+    }
+
+    window.addEventListener("load", initAuth);
     
     const agents = {
-        ceo:   { name: 'CEO',       role: 'Стратегия и видение' },
-        cfo:   { name: 'CFO',       role: 'Финансы и риски' },
-        cpo:   { name: 'CPO',       role: 'Продукт и UX' },
-        marketing: { name: 'Маркетинг', role: 'Маркетинг' },
-        skeptic:   { name: 'Скептик',   role: 'Критический советник' },
-        summary:   { name: 'Итоги',     role: 'Модератор сессии' },
+        ceo:   { name: 'CEO', role: 'Стратегия и видение', icon: '🎯' },
+        cfo:   { name: 'CFO', role: 'Финансы и риски', icon: '💰' },
+        cpo:   { name: 'CPO', role: 'Продукт и UX', icon: '🔧' },
+        marketing: { name: 'Маркетинг', role: 'Маркетинг', icon: '📈' },
+        skeptic:   { name: 'Скептик', role: 'Критический советник', icon: '⚠️' },
+        summary:   { name: 'Итоги', role: 'Модератор сессии', icon: '✅' },
     };
 
     const ALL_AGENTS = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic'];
 
-    // агенты, выбранные для следующего раунда
     let selectedAgents = new Set(ALL_AGENTS);
-    // агенты, участвовавшие в первом полном раунде
     let lastRoundAgents = [];
-    // был ли уже хотя бы один summary
     let hasSummary = false;
-
     let chatHistory = [];
 
     const chatArea = document.getElementById('chatArea');
@@ -554,7 +698,13 @@ window.addEventListener("load", initAuth);
     messageInput.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        
+        // Disable send button if empty
+        sendBtn.disabled = !this.value.trim();
     });
+
+    // Initially disable send button
+    sendBtn.disabled = true;
 
     // обработчики карточек агентов
     setupAgentCards();
@@ -569,52 +719,50 @@ window.addEventListener("load", initAuth);
     });
 
     summaryBtn.addEventListener('click', async () => {
-    if (!hasSummary || isLoading) return;
+        if (!hasSummary || isLoading) return;
 
-    try {
-        isLoading = true;
-        sendBtn.disabled = true;
-        summaryBtn.disabled = true;
+        try {
+            isLoading = true;
+            sendBtn.disabled = true;
+            summaryBtn.disabled = true;
 
-        const url = "/api/summary";
+            const url = "/api/summary";
 
-        const response = await fetch(url, {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`,
-    },
-    body: JSON.stringify({
-        history: chatHistory.slice(-20),
-    })
-});
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({
+                    history: chatHistory.slice(-20),
+                })
+            });
 
+            if (!response.ok) {
+                const txt = await response.text().catch(() => "");
+                console.error("Summary error:", response.status, response.statusText, txt);
 
-        if (!response.ok) {
-    const txt = await response.text().catch(() => "");
-    console.error("Summary error:", response.status, response.statusText, txt);
+                if (response.status === 429) {
+                    addMessage('Слишком много запросов к итогам. Подождите минуту и попробуйте снова.', 'agent', 'summary');
+                } else {
+                    addMessage('Не удалось пересчитать итоги. Попробуйте ещё раз.', 'agent', 'summary');
+                }
+                return;
+            }
 
-    if (response.status === 429) {
-        addMessage('Слишком много запросов к итогам. Подождите минуту и попробуйте снова.', 'agent', 'summary');
-    } else {
-        addMessage('Не удалось пересчитать итоги. Попробуйте ещё раз.', 'agent', 'summary');
-    }
-    return;
-}
+            const data = await response.json();
+            addMessage(data.text, 'agent', 'summary');
 
-        const data = await response.json();
-        addMessage(data.text, 'agent', 'summary');
-
-    } catch (err) {
-        console.error("Request failed:", err);
-        addMessage('Ошибка связи при пересчёте итогов. Попробуйте ещё раз.', 'agent', 'summary');
-    } finally {
-        isLoading = false;
-        sendBtn.disabled = false;
-        summaryBtn.disabled = false;
-    }
-});
-
+        } catch (err) {
+            console.error("Request failed:", err);
+            addMessage('Ошибка связи при пересчёте итогов. Попробуйте ещё раз.', 'agent', 'summary');
+        } finally {
+            isLoading = false;
+            sendBtn.disabled = !messageInput.value.trim();
+            summaryBtn.disabled = false;
+        }
+    });
 
     function setupAgentCards() {
         document.querySelectorAll('.agent-card').forEach(card => {
@@ -626,7 +774,6 @@ window.addEventListener("load", initAuth);
                 const hasHistory = chatHistory.length > 0;
 
                 if (!hasHistory || !hasSummary) {
-                    // этап выбора состава совета до первого summary
                     if (selectedAgents.has(agent)) {
                         selectedAgents.delete(agent);
                         setAgentSelected(agent, false);
@@ -635,13 +782,11 @@ window.addEventListener("load", initAuth);
                         setAgentSelected(agent, true);
                     }
                 } else {
-                    // после первого summary: разовый ответ агента по истории
                     runSingleAgentTurn(agent);
                 }
             });
         });
 
-        // изначально все выбраны → зелёные
         selectedAgents.forEach(a => setAgentSelected(a, true));
     }
 
@@ -659,265 +804,277 @@ window.addEventListener("load", initAuth);
         }
     }
 
+    // НОВОЕ: Парсинг структурированного ответа агента
+    function parseAgentResponse(text, agentType) {
+        const sections = [];
+        const lines = text.split('
+').filter(l => l.trim());
+        
+        lines.forEach(line => {
+            // Ищем паттерн [Label] — value или [Label]: value
+            const match = line.match(/^[([^]]+)]s*[—:-]s*(.+)$/);
+            if (match) {
+                const label = match[1].trim();
+                const value = match[2].trim();
+                
+                // Определяем тип секции
+                let sectionType = 'text';
+                let badgeType = null;
+                
+                if (label.toLowerCase().includes('verdict')) {
+                    sectionType = 'badge';
+                    if (value.toUpperCase().includes('GO') && !value.toUpperCase().includes('NO-GO')) {
+                        badgeType = 'success';
+                    } else if (value.toUpperCase().includes('NO-GO')) {
+                        badgeType = 'danger';
+                    } else if (value.toUpperCase().includes('FAST')) {
+                        badgeType = 'success';
+                    } else if (value.toUpperCase().includes('SLOW')) {
+                        badgeType = 'warning';
+                    } else if (value.toUpperCase().includes('SAFE')) {
+                        badgeType = 'success';
+                    } else if (value.toUpperCase().includes('VULNERABLE')) {
+                        badgeType = 'danger';
+                    } else if (value.toUpperCase().includes('SCALABLE')) {
+                        badgeType = 'info';
+                    } else if (value.toUpperCase().includes('MANUAL')) {
+                        badgeType = 'warning';
+                    } else if (value.toUpperCase().includes('FATAL')) {
+                        badgeType = 'danger';
+                    } else if (value.toUpperCase().includes('FIXABLE')) {
+                        badgeType = 'warning';
+                    }
+                } else if (label.toLowerCase().includes('confidence')) {
+                    sectionType = 'progress';
+                }
+                
+                sections.push({ label, value, type: sectionType, badgeType });
+            } else if (line.trim()) {
+                // Обычная строка без структуры
+                sections.push({ label: null, value: line.trim(), type: 'text' });
+            }
+        });
+        
+        return sections.length > 0 ? sections : [{ label: null, value: text, type: 'text' }];
+    }
+
+    // НОВОЕ: Отрисовка структурированной карточки агента
     function addMessage(text, sender = 'user', agentType = null) {
         const messageEl = document.createElement('div');
         messageEl.className = `message ${sender}`;
-        if (agentType) messageEl.classList.add(agentType);
-
-        let content;
-    
-        if (sender === 'agent') {
-            const agent = agents[agentType];
-
-            // для агентов используем структурный форматтер
-            const formatted = formatBoardStyle(text);
-
-            content = `
-              <div class="message-header">
-                <span class="agent-badge" style="background: var(--color-${agentType})"></span>
-                ${agent.name}
-              </div>
-              <div class="message-content">
-                ${formatted}
-              </div>
-            `;
-
-            chatHistory.push(`${agentType.toUpperCase()}: ${text}`);
-        } else {
-            // для пользователя просто сохраняем переводы строк
-            content = `
-              <div class="message-content">
-                ${formatWithLineBreaks(text)}
-              </div>
-            `;
-            chatHistory.push(`USER: ${text}`);
-        }
-
-    if (chatHistory.length > 50) {
-        chatHistory = chatHistory.slice(-50);
-    }
-
-    messageEl.innerHTML = content;
-    chatArea.appendChild(messageEl);
-    chatArea.scrollTop = chatArea.scrollHeight;
-}
-
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    function formatWithLineBreaks(text) {
-    return escapeHtml(text).replace(/(\r\n|\r|\n)/g, '<br>');
-}
-
-function formatBoardStyle(text) {
-    const rawLines = text.split(/\r?\n/).map(l => l.trim());
-    const lines = rawLines.filter(Boolean);
-
-    const items = lines.map(line => {
-        // 1) [Суть идеи] — текст
-        const match = line.match(/^\d+\)\s*\[([^\]]+)\]\s*[—-]\s*(.+)$/);
-        if (!match) {
-            // просто экранируем текст и заменяем переводы на <br>
-            return `<p>${escapeHtml(line).replace(/(\r\n|\r|\n)/g, '<br>')}</p>`;
-        }
-
-        const title = escapeHtml(match[1]);
-        const value = escapeHtml(match[2]);
         
-        return `
-            <div class="line-item">
-                <div class="line-label">${title}</div>
-                <div class="line-value">${value}</div>
-            </div>
+        if (sender === 'agent' && agentType) {
+            messageEl.classList.add(agentType);
+            
+            const header = document.createElement('div');
+            header.className = 'message-header';
+            header.innerHTML = `
+                <span class="agent-icon">${agents[agentType].icon}</span>
+                <span>${agents[agentType].name}</span>
+            `;
+            messageEl.appendChild(header);
+            
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            
+            const sections = parseAgentResponse(text, agentType);
+            
+            sections.forEach(section => {
+                const sectionEl = document.createElement('div');
+                sectionEl.className = `content-section ${agentType}`;
+                
+                if (section.label) {
+                    const labelEl = document.createElement('div');
+                    labelEl.className = 'section-label';
+                    labelEl.textContent = section.label;
+                    sectionEl.appendChild(labelEl);
+                }
+                
+                const valueEl = document.createElement('div');
+                valueEl.className = 'section-value';
+                
+                if (section.type === 'badge' && section.badgeType) {
+                    const badge = document.createElement('span');
+                    badge.className = `badge ${section.badgeType}`;
+                    badge.textContent = section.value;
+                    valueEl.appendChild(badge);
+                } else if (section.type === 'progress') {
+                    // Извлекаем процент
+                    const percentMatch = section.value.match(/(d+)%/);
+                    const percent = percentMatch ? parseInt(percentMatch[1]) : 85;
+                    
+                    const progressBar = document.createElement('div');
+                    progressBar.className = 'confidence-bar';
+                    
+                    const fill = document.createElement('div');
+                    fill.className = 'confidence-fill';
+                    fill.style.width = '0%';
+                    progressBar.appendChild(fill);
+                    
+                    const percentText = document.createElement('div');
+                    percentText.className = 'confidence-text';
+                    percentText.textContent = section.value;
+                    
+                    valueEl.appendChild(progressBar);
+                    valueEl.appendChild(percentText);
+                    
+                    // Анимируем прогресс-бар
+                    setTimeout(() => {
+                        fill.style.width = `${percent}%`;
+                    }, 100);
+                } else {
+                    valueEl.textContent = section.value;
+                }
+                
+                sectionEl.appendChild(valueEl);
+                content.appendChild(sectionEl);
+            });
+            
+            messageEl.appendChild(content);
+        } else {
+            messageEl.textContent = text;
+        }
+        
+        // Удаляем empty state если есть
+        const emptyState = chatArea.querySelector('.empty-state');
+        if (emptyState) {
+            emptyState.remove();
+        }
+        
+        chatArea.appendChild(messageEl);
+        chatArea.scrollTop = chatArea.scrollHeight;
+        
+        // Добавляем в историю
+        if (sender === 'user') {
+            chatHistory.push(`User: ${text}`);
+        } else if (agentType) {
+            chatHistory.push(`${agents[agentType].name}: ${text}`);
+        }
+    }
+
+    // НОВОЕ: Skeleton loader при загрузке
+    function addSkeletonMessage() {
+        const skeleton = document.createElement('div');
+        skeleton.className = 'skeleton-message';
+        skeleton.innerHTML = `
+            <div class="skeleton-header"></div>
+            <div class="skeleton-line long"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line short"></div>
         `;
-    });
+        
+        const emptyState = chatArea.querySelector('.empty-state');
+        if (emptyState) {
+            emptyState.remove();
+        }
+        
+        chatArea.appendChild(skeleton);
+        chatArea.scrollTop = chatArea.scrollHeight;
+        return skeleton;
+    }
 
-    return items.join('');
-}
+    function removeSkeletonMessage(skeleton) {
+        if (skeleton && skeleton.parentNode) {
+            skeleton.remove();
+        }
+    }
 
-
-    
     async function sendMessage() {
         const text = messageInput.value.trim();
         if (!text || isLoading) return;
 
+        addMessage(text, 'user');
         messageInput.value = '';
         messageInput.style.height = 'auto';
-
-        const emptyState = chatArea.querySelector('.empty-state');
-        if (emptyState) emptyState.remove();
-
-        addMessage(text, 'user');
-
-        isLoading = true;
         sendBtn.disabled = true;
 
-        const loadingEl = document.createElement('div');
-        loadingEl.className = 'loading';
-        loadingEl.innerHTML = '<div class="spinner"></div>Совет обсуждает ваш вопрос...';
-        chatArea.appendChild(loadingEl);
-        chatArea.scrollTop = chatArea.scrollHeight;
+        isLoading = true;
+
+        const activeAgentsArray = Array.from(selectedAgents);
+        const skeleton = addSkeletonMessage();
 
         try {
-            const isInitialRound = !hasSummary;
+            const response = await fetch('/api/board', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({
+                    message: text,
+                    active_agents: activeAgentsArray,
+                    history: chatHistory.slice(-20),
+                    mode: hasSummary ? 'followup' : 'initial'
+                })
+            });
 
-            const backendResponses = await callBackend(text, isInitialRound);
-
-            loadingEl.remove();
-
-            const agentOrder = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic', 'summary'];
-
-            for (const agentType of agentOrder) {
-                const response = backendResponses[agentType];
-                if (response) {
-                    addMessage(response, 'agent', agentType);
-                    await new Promise(r => setTimeout(r, 300));
-                }
-            }
-
-            if (isInitialRound) {
-                hasSummary = true;
-                summaryBtn.style.display = 'inline-flex';
-
-                // запомним состав совета этого раунда
-                lastRoundAgents = Array.from(selectedAgents);
-
-                // погасим лампочки и очистим выбор
-                ALL_AGENTS.forEach(a => setAgentSelected(a, false));
-                selectedAgents = new Set();
-            }
-
-        } catch (error) {
-            console.error('Error:', error);
-            loadingEl.remove();
-            addMessage('Произошла ошибка при обработке. Попробуйте ещё раз.', 'agent', 'skeptic');
-        } finally {
-            isLoading = false;
-            sendBtn.disabled = false;
-            messageInput.focus();
-        }
-    }
-
-    async function callBackend(userMessage, isInitialRound) {
-        const result = {
-            ceo: null,
-            cfo: null,
-            cpo: null,
-            marketing: null,
-            skeptic: null,
-            summary: null,
-        };
-
-        try {
-            const url = "/api/board";
-
-            const agentsForThisCall = isInitialRound
-                ? Array.from(selectedAgents)
-                : (lastRoundAgents.length ? lastRoundAgents : Array.from(selectedAgents));
-
-            const response = await fetch(url, {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`,
-    },
-    body: JSON.stringify({
-        message: userMessage,
-        active_agents: agentsForThisCall,
-        history: chatHistory.slice(-20),
-        mode: isInitialRound ? "initial" : "comment",
-    })
-});
-
+            removeSkeletonMessage(skeleton);
 
             if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    console.error("Backend error:", response.status, response.statusText, text);
+                throw new Error(`HTTP ${response.status}`);
+            }
 
-    let msg;
-    if (response.status === 429) {
-        msg = "Слишком много запросов. Подождите минуту и попробуйте снова.";
-    } else {
-        msg = "Ошибка на стороне сервера. Попробуйте ещё раз.";
-    }
+            const replies = await response.json();
 
-    Object.keys(result).forEach(k => result[k] = msg);
-    return result;
-}
+            replies.forEach(reply => {
+                addMessage(reply.text, 'agent', reply.agent);
+            });
 
-
-            const data = await response.json();
-            console.log("Backend data:", data);
-
-            for (const item of data) {
-                if (result.hasOwnProperty(item.agent)) {
-                    result[item.agent] = item.text;
-                }
+            if (!hasSummary) {
+                hasSummary = true;
+                summaryBtn.style.display = 'block';
+                lastRoundAgents = activeAgentsArray;
             }
 
         } catch (err) {
-            console.error("Request failed:", err);
-            const msg = "Не удалось связаться с сервером. Попробуйте ещё раз.";
-            Object.keys(result).forEach(k => result[k] = msg);
+            removeSkeletonMessage(skeleton);
+            console.error('Request failed:', err);
+            addMessage('Ошибка связи с сервером. Попробуйте ещё раз.', 'agent', 'summary');
+        } finally {
+            isLoading = false;
+            sendBtn.disabled = !messageInput.value.trim();
         }
-
-        return result;
     }
 
     async function runSingleAgentTurn(agent) {
         if (isLoading) return;
-        if (!agents[agent]) return;
+
+        isLoading = true;
+        sendBtn.disabled = true;
+
+        const skeleton = addSkeletonMessage();
 
         try {
-            isLoading = true;
-            sendBtn.disabled = true;
+            const response = await fetch('/api/agent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({
+                    agent: agent,
+                    history: chatHistory.slice(-20)
+                })
+            });
 
-            setAgentSelected(agent, true);
-
-            const url = "/api/agent";
-
-            const response = await fetch(url, {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`,
-    },
-    body: JSON.stringify({
-        agent,
-        history: chatHistory.slice(-20),
-    })
-});
-
+            removeSkeletonMessage(skeleton);
 
             if (!response.ok) {
-    const txt = await response.text().catch(() => "");
-    console.error("Agent error:", response.status, response.statusText, txt);
-
-    if (response.status === 429) {
-        addMessage('Слишком много запросов к этому агенту. Подождите минуту и попробуйте снова.', 'agent', agent);
-    } else {
-        addMessage('Не удалось получить дополнительный ответ от агента.', 'agent', agent);
-    }
-    return;
-}
-
+                throw new Error(`HTTP ${response.status}`);
+            }
 
             const data = await response.json();
             addMessage(data.text, 'agent', agent);
 
         } catch (err) {
-            console.error("Request failed:", err);
-            addMessage('Ошибка связи с агентом. Попробуйте ещё раз.', 'agent', agent);
+            removeSkeletonMessage(skeleton);
+            console.error('Single agent request failed:', err);
+            addMessage('Ошибка при запросе к агенту. Попробуйте ещё раз.', 'agent', agent);
         } finally {
-            setAgentSelected(agent, false);
             isLoading = false;
-            sendBtn.disabled = false;
+            sendBtn.disabled = !messageInput.value.trim();
         }
     }
 </script>
-
 </body>
 </html>
