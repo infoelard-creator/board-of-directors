@@ -2,7 +2,7 @@ import os
 import uuid
 from datetime import datetime, timedelta
 from typing import List, Optional
-
+import hashlib
 import json
 import requests
 from fastapi import FastAPI, Request, Depends
@@ -51,6 +51,36 @@ if not GIGA_AUTH_KEY:
 
 _access_token: Optional[str] = None
 _access_exp: Optional[datetime] = None
+
+# ===== КЭШ ПАРСЕРА ПО СЕССИЯМ =====
+_parsed_cache: dict[str, dict] = {}  # {cache_key: ParsedRequest}
+
+
+def get_cache_key(user_id: str, message: str) -> str:
+    """Генерирует ключ кэша на основе user_id и сообщения."""
+    msg_hash = hashlib.md5(message.encode()).hexdigest()[:8]
+    return f"{user_id}:{msg_hash}"
+
+
+def get_cached_parse(user_id: str, message: str) -> Optional["ParsedRequest"]:
+    """Получает кэшированный парс запроса."""
+    key = get_cache_key(user_id, message)
+    cached = _parsed_cache.get(key)
+    if cached:
+        logger.info("Parser cache hit | user=%s | message=%s", user_id, message[:50])
+    return cached
+
+
+def cache_parse(user_id: str, message: str, parsed: "ParsedRequest") -> None:
+    """Кэширует парс запроса."""
+    key = get_cache_key(user_id, message)
+    _parsed_cache[key] = parsed
+    # Ограничиваем кэш (макс 1000 записей)
+    if len(_parsed_cache) > 1000:
+        keys_to_delete = list(_parsed_cache.keys())[:-500]
+        for k in keys_to_delete:
+            del _parsed_cache[k]
+        logger.info("Parser cache cleaned | remaining=%d", len(_parsed_cache))
 
 
 def get_gigachat_token() -> str:
@@ -271,11 +301,16 @@ class ParsedRequest(BaseModel):
     confidence: float = 0.85
 
 
-def parse_user_request(user_msg: str) -> ParsedRequest:
+def parse_user_request(user_msg: str, user_id: str = "anonymous") -> ParsedRequest:
     """
     Парсит исходный запрос пользователя в структурированную форму.
-    Парсер вызывается один раз перед тем, как отправить запрос агентам.
+    Использует кэш для экономии API вызовов.
     """
+    # ШАГ 0: проверяем кэш
+    cached = get_cached_parse(user_id, user_msg)
+    if cached:
+        return cached
+
     token = get_gigachat_token()
 
     payload = {
@@ -299,9 +334,10 @@ def parse_user_request(user_msg: str) -> ParsedRequest:
     url = f"{GIGA_API_BASE}/api/v1/chat/completions"
 
     logger.info(
-        "Parser request -> %s | message=%s",
+        "Parser request -> %s | message=%s | user=%s",
         url,
         user_msg[:50],
+        user_id,
     )
 
     resp = requests.post(url, headers=headers, json=payload, timeout=60)
@@ -329,7 +365,7 @@ def parse_user_request(user_msg: str) -> ParsedRequest:
             "summary": user_msg[:200],
         }
 
-    return ParsedRequest(
+    parsed = ParsedRequest(
         original_message=user_msg,
         intent=parsed_json.get("intent", "other"),
         domain=parsed_json.get("domain", "strategy"),
@@ -339,6 +375,11 @@ def parse_user_request(user_msg: str) -> ParsedRequest:
         summary=parsed_json.get("summary"),
         confidence=0.85,
     )
+
+    # Сохраняем в кэш
+    cache_parse(user_id, user_msg, parsed)
+
+    return parsed
 
 
 def compress_history(history: Optional[List[str]], max_items: int = 5) -> str:
@@ -350,38 +391,17 @@ def compress_history(history: Optional[List[str]], max_items: int = 5) -> str:
 ".join(recent)
 
 
-def ask_gigachat(agent: str, user_msg: str, parsed_req: Optional[ParsedRequest] = None) -> str:
+def ask_gigachat(agent: str, user_msg: str) -> str:
     """
     Запрос к GigaChat с оптимизированными параметрами.
-    Если parsed_req передан, агент получает структурированный запрос.
+    user_msg уже содержит все необходимые данные (структурированный запрос, контекст, историю).
     """
     token = get_gigachat_token()
     system_prompt = AGENT_SYSTEM_PROMPTS[agent]
     params = AGENT_PARAMS[agent]
 
-    if parsed_req:
-        structured_input = (
-            f"СТРУКТУРИРОВАННЫЙ ЗАПРОС:
-"
-            f"• Цель (intent): {parsed_req.intent}
-"
-            f"• Область (domain): {parsed_req.domain}
-"
-            f"• Ключевые точки: {', '.join(parsed_req.key_points) if parsed_req.key_points else 'нет'}
-"
-            f"• Предположения: {', '.join(parsed_req.assumptions) if parsed_req.assumptions else 'нет'}
-"
-            f"• Ограничения: {', '.join(parsed_req.constraints) if parsed_req.constraints else 'нет'}
-"
-            f"• Краткое резюме: {parsed_req.summary or parsed_req.original_message[:200]}
-"
-        )
-        agent_input = structured_input + "
-
-ДОПОЛНИТЕЛЬНЫЙ КОНТЕКСТ:
-" + user_msg
-    else:
-        agent_input = user_msg
+    # user_msg уже полный - просто передаём
+    agent_input = user_msg
 
     payload = {
         "model": "GigaChat-2",
@@ -404,12 +424,11 @@ def ask_gigachat(agent: str, user_msg: str, parsed_req: Optional[ParsedRequest] 
     url = f"{GIGA_API_BASE}/api/v1/chat/completions"
 
     logger.info(
-        "Chat request -> %s | agent=%s | temp=%.1f | max_tokens=%d | has_parser=%s",
+        "Chat request -> %s | agent=%s | temp=%.1f | max_tokens=%d",
         url,
         agent,
         params["temperature"],
         params["max_tokens"],
-        parsed_req is not None,
     )
 
     resp = requests.post(url, headers=headers, json=payload, timeout=60)
@@ -456,6 +475,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ===== Модели =====
 
+
 class ChatRequest(BaseModel):
     message: str
     active_agents: Optional[List[str]] = None
@@ -501,7 +521,8 @@ async def login(
     return TokenResponse(access_token=token)
 
 
-# ===== ОПТИМИЗИРОВАННАЯ ЦЕПОЧКА СОВЕТА С ПАРСЕРОМ =====
+# ===== ОПТИМИЗИРОВАННАЯ ЦЕПОЧКА СОВЕТА С ПАРСЕРОМ И КЭШЕМ =====
+
 
 @app.post("/api/board", response_model=List[AgentReply])
 @limiter.limit("10/minute")
@@ -511,8 +532,8 @@ async def board_chat(
     user_id: str = Depends(verify_token),
 ):
     """
-    Оптимизированная версия board_chat с предварительным парсером.
-    1. Парсим исходный запрос пользователя.
+    Оптимизированная версия board_chat с парсером и кэшем.
+    1. Парсим исходный запрос пользователя (с кэшем).
     2. Все агенты получают структурированный запрос.
     """
     user_msg = req.message
@@ -534,8 +555,8 @@ async def board_chat(
     ctx: dict[str, str] = {}
 
     try:
-        # ШАГ 0: парсим исходный запрос
-        parsed_request = parse_user_request(user_msg)
+        # ШАГ 0: парсим исходный запрос (с кэшем)
+        parsed_request = parse_user_request(user_msg, user_id=user_id)
         logger.info(
             "Parsed request | intent=%s | domain=%s | key_points=%s",
             parsed_request.intent,
@@ -559,7 +580,7 @@ async def board_chat(
             if compressed:
                 parts.append(
                     f"
-ВЫДЕРЖКА ИЗ ИСТОРИИ (последние 5 сообщений):
+ВЫДЕЖКА ИЗ ИСТОРИИ (последние 5 сообщений):
 {compressed}"
                 )
 
@@ -572,11 +593,11 @@ async def board_chat(
 
             agent_input = "
 ".join(parts)
-            text = ask_gigachat(agent, agent_input, parsed_req=parsed_request)
+            text = ask_gigachat(agent, agent_input)
             ctx[agent] = text
             replies.append(AgentReply(agent=agent, text=text))
 
-        # ШАГ 2: summary
+        # ШАГ 2: summary (только для initial)
         if mode == "initial":
             summary_parts: List[str] = [
                 "СТРУКТУРИРОВАННЫЙ ЗАПРОС:",
@@ -594,13 +615,13 @@ async def board_chat(
             if compressed:
                 summary_parts.append(
                     "
-ВЫДЕРЖКА ИЗ ИСТОРИИ:
+ВЫДЕЖКА ИЗ ИСТОРИИ:
 " + compressed
                 )
 
             summary_input = "
 ".join(summary_parts)
-            summary_text = ask_gigachat("summary", summary_input, parsed_req=parsed_request)
+            summary_text = ask_gigachat("summary", summary_input)
             replies.append(AgentReply(agent="summary", text=summary_text))
 
     except Exception as e:
@@ -620,7 +641,7 @@ async def single_agent(
     request: Request,
     user_id: str = Depends(verify_token),
 ):
-    """Одиночный агент с парсером + сокращённой историей."""
+    """Одиночный агент с парсером (если передано сообщение) + сокращённой историей."""
     logger.info(
         "Incoming /api/agent: agent=%s | message=%s | user=%s",
         req.agent,
@@ -631,11 +652,10 @@ async def single_agent(
     if req.agent not in AGENT_SYSTEM_PROMPTS:
         return SingleAgentReply(text=f"Неизвестный агент: {req.agent}")
 
-    parsed_request: Optional[ParsedRequest] = None
     parts: List[str] = []
 
     if req.message:
-        parsed_request = parse_user_request(req.message)
+        parsed_request = parse_user_request(req.message, user_id=user_id)
         logger.info(
             "Parsed single message | intent=%s | domain=%s",
             parsed_request.intent,
@@ -656,7 +676,7 @@ async def single_agent(
     compressed = compress_history(req.history, max_items=5)
     if compressed:
         parts.append("
-ВЫДЕРЖКА ИЗ ИСТОРИИ (последние 5):
+ВЫДЕЖКА ИЗ ИСТОРИИ (последние 5):
 " + compressed)
 
     if not parts:
@@ -668,7 +688,7 @@ async def single_agent(
 ".join(parts)
 
     try:
-        text = ask_gigachat(req.agent, full_content, parsed_req=parsed_request)
+        text = ask_gigachat(req.agent, full_content)
     except Exception as e:
         logger.exception("Error in /api/agent | agent=%s | user=%s", req.agent, user_id)
         text = f"Ошибка при обращении к GigaChat для агента {req.agent}: {e}"
@@ -683,7 +703,7 @@ async def recalc_summary(
     request: Request,
     user_id: str = Depends(verify_token),
 ):
-    """Пересчёт итогов с учётом структурированного запроса."""
+    """Пересчёт итогов на основе последней истории обсуждения (без лишнего парсера)."""
     logger.info(
         "Incoming /api/summary | history_len=%s | user=%s",
         len(req.history) if req.history else 0,
@@ -697,14 +717,8 @@ async def recalc_summary(
             text="Недостаточно истории для пересчёта итогов. Сначала проведите обсуждение."
         )
 
-    parsed_request: Optional[ParsedRequest] = None
-    if req.history and len(req.history) > 0:
-        first_user_msg = req.history[0] if isinstance(req.history[0], str) else str(req.history[0])
-        try:
-            parsed_request = parse_user_request(first_user_msg)
-        except Exception as e:
-            logger.warning("Failed to parse first history message for summary: %s", e)
-
+    # Для summary не парсим - используем только историю
+    # Все ответы агентов уже структурированы
     summary_input = (
         "Вот выдержка из истории обсуждения совета директоров "
         "(последние 5 сообщений):
@@ -717,7 +731,7 @@ async def recalc_summary(
     )
 
     try:
-        text = ask_gigachat("summary", summary_input, parsed_req=parsed_request)
+        text = ask_gigachat("summary", summary_input)
     except Exception as e:
         logger.exception("Error in /api/summary | user=%s", user_id)
         text = f"Ошибка при обращении к GigaChat для пересчёта итогов: {e}"
