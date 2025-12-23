@@ -201,7 +201,7 @@
             position: relative;
         }
 
-        /* НОВОЕ: Заголовок агента с иконкой */
+        /* Заголовок агента с иконкой */
         .message-header {
             font-weight: 600;
             font-size: 14px;
@@ -243,7 +243,7 @@
             border-bottom-color: var(--color-summary);
         }
 
-        /* НОВОЕ: Структурированный контент */
+        /* Структурированный контент */
         .message-content {
             font-size: 14px;
             line-height: 1.6;
@@ -279,7 +279,7 @@
             line-height: 1.5;
         }
 
-        /* НОВОЕ: Бейджи для вердиктов */
+        /* Бейджи для вердиктов */
         .badge {
             display: inline-flex;
             align-items: center;
@@ -312,7 +312,7 @@
             color: #2563eb;
         }
 
-        /* НОВОЕ: Прогресс-бар для Confidence */
+        /* Прогресс-бар для Confidence */
         .confidence-bar {
             width: 100%;
             height: 8px;
@@ -336,7 +336,7 @@
             margin-top: 4px;
         }
 
-        /* НОВОЕ: Skeleton loader для агентов */
+        /* Skeleton loader для агентов */
         .skeleton-message {
             align-self: flex-start;
             max-width: clamp(280px, 80%, 700px);
@@ -386,6 +386,8 @@
             gap: 12px;
             background: white;
             flex-shrink: 0;
+            align-items: center;
+            flex-wrap: wrap;
         }
 
         .summary-btn {
@@ -407,8 +409,25 @@
             transform: translateY(-1px);
         }
 
+        .debug-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #666;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .debug-label input[type="checkbox"] {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
         .input-field {
             flex: 1;
+            min-width: 200px;
             padding: 12px 16px;
             border: 1px solid var(--color-border);
             border-radius: 6px;
@@ -436,6 +455,7 @@
             height: 44px;
             display: flex;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .send-btn:hover:not(:disabled) {
@@ -532,10 +552,29 @@
 
             .input-area {
                 padding: 12px;
+                flex-direction: column;
             }
 
             .message {
                 max-width: 100%;
+            }
+
+            .input-field {
+                min-width: auto;
+                width: 100%;
+            }
+
+            .send-btn {
+                width: 100%;
+            }
+
+            .summary-btn {
+                width: 100%;
+                margin-right: 0;
+            }
+
+            .debug-label {
+                margin-right: 0;
             }
         }
     </style>
@@ -614,6 +653,13 @@
                 <button class="summary-btn" id="summaryBtn" style="display: none;">
                     Обновить итоги
                 </button>
+
+                <!-- ЧЕКБОКС ДЛЯ DEBUG -->
+                <label class="debug-label">
+                    <input type="checkbox" id="debugCheckbox" />
+                    <span>debug</span>
+                </label>
+
                 <textarea 
                     class="input-field" 
                     id="messageInput" 
@@ -673,9 +719,9 @@
     window.addEventListener("load", initAuth);
     
     const agents = {
-        ceo:   { name: 'CEO', role: 'Стратегия и видение', icon: '🎯' },
-        cfo:   { name: 'CFO', role: 'Финансы и риски', icon: '💰' },
-        cpo:   { name: 'CPO', role: 'Продукт и UX', icon: '🔧' },
+        ceo:       { name: 'CEO', role: 'Стратегия и видение', icon: '🎯' },
+        cfo:       { name: 'CFO', role: 'Финансы и риски', icon: '💰' },
+        cpo:       { name: 'CPO', role: 'Продукт и UX', icon: '🔧' },
         marketing: { name: 'Маркетинг', role: 'Маркетинг', icon: '📈' },
         skeptic:   { name: 'Скептик', role: 'Критический советник', icon: '⚠️' },
         summary:   { name: 'Итоги', role: 'Модератор сессии', icon: '✅' },
@@ -692,6 +738,7 @@
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
     const summaryBtn = document.getElementById('summaryBtn');
+    const debugCheckbox = document.getElementById('debugCheckbox');
     let isLoading = false;
 
     // авто‑ресайз textarea
@@ -736,6 +783,7 @@
                 },
                 body: JSON.stringify({
                     history: chatHistory.slice(-20),
+                    debug: !!debugCheckbox.checked
                 })
             });
 
@@ -804,15 +852,14 @@
         }
     }
 
-    // НОВОЕ: Парсинг структурированного ответа агента
+    // Парсинг структурированного ответа агента
     function parseAgentResponse(text, agentType) {
         const sections = [];
-        const lines = text.split('
-').filter(l => l.trim());
+        const lines = text.split('\n').filter(l => l.trim());
         
         lines.forEach(line => {
             // Ищем паттерн [Label] — value или [Label]: value
-            const match = line.match(/^[([^]]+)]s*[—:-]s*(.+)$/);
+            const match = line.match(/^\[([^\]]+)\]\s*[—:-]\s*(.+)$/);
             if (match) {
                 const label = match[1].trim();
                 const value = match[2].trim();
@@ -821,30 +868,33 @@
                 let sectionType = 'text';
                 let badgeType = null;
                 
-                if (label.toLowerCase().includes('verdict')) {
+                const labelLower = label.toLowerCase();
+                const valueLower = value.toLowerCase();
+                
+                if (labelLower.includes('verdict')) {
                     sectionType = 'badge';
-                    if (value.toUpperCase().includes('GO') && !value.toUpperCase().includes('NO-GO')) {
+                    if (valueLower.includes('go') && !valueLower.includes('no-go')) {
                         badgeType = 'success';
-                    } else if (value.toUpperCase().includes('NO-GO')) {
+                    } else if (valueLower.includes('no-go')) {
                         badgeType = 'danger';
-                    } else if (value.toUpperCase().includes('FAST')) {
+                    } else if (valueLower.includes('fast')) {
                         badgeType = 'success';
-                    } else if (value.toUpperCase().includes('SLOW')) {
+                    } else if (valueLower.includes('slow')) {
                         badgeType = 'warning';
-                    } else if (value.toUpperCase().includes('SAFE')) {
+                    } else if (valueLower.includes('safe')) {
                         badgeType = 'success';
-                    } else if (value.toUpperCase().includes('VULNERABLE')) {
+                    } else if (valueLower.includes('vulnerable')) {
                         badgeType = 'danger';
-                    } else if (value.toUpperCase().includes('SCALABLE')) {
+                    } else if (valueLower.includes('scalable')) {
                         badgeType = 'info';
-                    } else if (value.toUpperCase().includes('MANUAL')) {
+                    } else if (valueLower.includes('manual')) {
                         badgeType = 'warning';
-                    } else if (value.toUpperCase().includes('FATAL')) {
+                    } else if (valueLower.includes('fatal')) {
                         badgeType = 'danger';
-                    } else if (value.toUpperCase().includes('FIXABLE')) {
+                    } else if (valueLower.includes('fixable')) {
                         badgeType = 'warning';
                     }
-                } else if (label.toLowerCase().includes('confidence')) {
+                } else if (labelLower.includes('confidence')) {
                     sectionType = 'progress';
                 }
                 
@@ -858,7 +908,7 @@
         return sections.length > 0 ? sections : [{ label: null, value: text, type: 'text' }];
     }
 
-    // НОВОЕ: Отрисовка структурированной карточки агента
+    // Отрисовка структурированной карточки агента
     function addMessage(text, sender = 'user', agentType = null) {
         const messageEl = document.createElement('div');
         messageEl.className = `message ${sender}`;
@@ -900,8 +950,8 @@
                     valueEl.appendChild(badge);
                 } else if (section.type === 'progress') {
                     // Извлекаем процент
-                    const percentMatch = section.value.match(/(d+)%/);
-                    const percent = percentMatch ? parseInt(percentMatch[1]) : 85;
+                    const percentMatch = section.value.match(/(\d+)%/);
+                    const percent = percentMatch ? parseInt(percentMatch[1], 10) : 85;
                     
                     const progressBar = document.createElement('div');
                     progressBar.className = 'confidence-bar';
@@ -952,7 +1002,7 @@
         }
     }
 
-    // НОВОЕ: Skeleton loader при загрузке
+    // Skeleton loader при загрузке
     function addSkeletonMessage() {
         const skeleton = document.createElement('div');
         skeleton.className = 'skeleton-message';
@@ -1004,7 +1054,8 @@
                     message: text,
                     active_agents: activeAgentsArray,
                     history: chatHistory.slice(-20),
-                    mode: hasSummary ? 'followup' : 'initial'
+                    mode: hasSummary ? 'followup' : 'initial',
+                    debug: !!debugCheckbox.checked
                 })
             });
 
@@ -1014,7 +1065,18 @@
                 throw new Error(`HTTP ${response.status}`);
             }
 
-            const replies = await response.json();
+            const json = await response.json();
+
+            // debug=false -> старый формат: массив AgentReply
+            // debug=true  -> новый формат: { user_message_original, user_message_compressed, agents_replies: [...] }
+            let replies;
+            if (debugCheckbox.checked && json && json.agents_replies && Array.isArray(json.agents_replies)) {
+                replies = json.agents_replies;
+            } else if (Array.isArray(json)) {
+                replies = json;
+            } else {
+                replies = [];
+            }
 
             replies.forEach(reply => {
                 addMessage(reply.text, 'agent', reply.agent);
@@ -1053,7 +1115,8 @@
                 },
                 body: JSON.stringify({
                     agent: agent,
-                    history: chatHistory.slice(-20)
+                    history: chatHistory.slice(-20),
+                    debug: !!debugCheckbox.checked
                 })
             });
 
