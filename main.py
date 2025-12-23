@@ -373,7 +373,7 @@ class CompressedMessage(BaseModel):
     """Сжатое представление сообщения пользователя."""
     intent: str
     domain: str
-    idea_summary: Optional[str]
+    idea_summary: Optional[str] = None
     key_points: List[str] = []
     constraints: Optional[Dict] = None
     assumptions: List[str] = []
