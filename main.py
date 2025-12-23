@@ -617,7 +617,7 @@ def expand_agent_output(agent: str, compressed_output: dict) -> str:
     return expanded_text
 
 
-def compress_history(history: Optional[List[str]], max_items: int = 5) -> str:
+def compress_history(history: Optional[List[str]], max_items: int = 15) -> str:
     """Сжимает историю до последних N сообщений для экономии токенов."""
     if not history:
         return ""
