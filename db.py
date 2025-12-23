@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import create_engine, Column, String, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -14,9 +14,9 @@ Base = declarative_base()
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(String, primary_key=True, index=True)  # user_id
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_seen_at = Column(DateTime, default=datetime.utcnow)
+    id = Column(String, primary_key=True, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_seen_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # Создание таблиц при старте
@@ -44,7 +44,7 @@ def create_user_if_not_exists(db, user_id: str) -> None:
     Если есть — обновляем last_seen_at.
     """
     user = db.get(User, user_id)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     if user is None:
         user = User(id=user_id, created_at=now, last_seen_at=now)
