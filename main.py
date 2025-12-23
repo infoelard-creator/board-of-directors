@@ -574,6 +574,19 @@ def compress_user_message(user_msg: str, user_id: str = "anonymous") -> Compress
 
     try:
         compressed_json = json.loads(compressor_output)
+        
+        # Проверка что JSON не пустой и содержит обязательные поля
+        if not compressed_json or not compressed_json.get("intent") or not compressed_json.get("domain"):
+            logger.warning("Compressor returned incomplete JSON: %s", compressed_json)
+            compressed_json = {
+                "intent": "other",
+                "domain": "strategy",
+                "idea_summary": user_msg[:100],
+                "key_points": [user_msg[:200]],
+                "constraints": None,
+                "assumptions": [],
+                "key_facts": []
+            }
     except json.JSONDecodeError:
         logger.warning("Compressor output is not valid JSON: %s", compressor_output)
         compressed_json = {
