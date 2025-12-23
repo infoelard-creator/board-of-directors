@@ -682,13 +682,31 @@
 
     let authToken = null;
 
-    function generateOrGetUserId() {
-        let userId = localStorage.getItem("board_user_id");
-        if (!userId) {
-            userId = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-            localStorage.setItem("board_user_id", userId);
-        }
-        return userId;
+    function generateOrGetUserId() { 
+        try { 
+            // 1️⃣ Пробуем localStorage (идеально) 
+            let userId = localStorage.getItem("board_user_id"); 
+            if (!userId) { 
+                userId = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8); 
+                localStorage.setItem("board_user_id", userId); } 
+            return userId; 
+        } catch (e) { 
+            try { 
+                // 2️⃣ Если localStorage упал → sessionStorage (работает везде) 
+                let userId = sessionStorage.getItem("board_user_id"); 
+                if (!userId) { 
+                    userId = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8); 
+                    sessionStorage.setItem("board_user_id", userId); 
+                } 
+                return userId; 
+            } catch (e2) { 
+                // 3️⃣ Если и sessionStorage упал → используем память браузера 
+                if (!window.fallbackUserId) { 
+                    window.fallbackUserId = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8); 
+                } 
+                return window.fallbackUserId; 
+            } 
+        } 
     }
 
     async function initAuth() {
