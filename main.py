@@ -1,7 +1,7 @@
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import List, Optional, Dict, Union
 import hashlib
 import json
 import requests
@@ -17,7 +17,7 @@ from logging.handlers import RotatingFileHandler
 from db import init_db, get_db, create_user_if_not_exists
 from sqlalchemy.orm import Session
 
-# ===== Логирование =====
+# ===== ЛОГИРОВАНИЕ =====
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -38,7 +38,7 @@ formatter = logging.Formatter(
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-# ===== Настройки GigaChat =====
+# ===== НАСТРОЙКИ GIGACHAT =====
 
 GIGA_AUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
 GIGA_API_BASE = "https://gigachat.devices.sberbank.ru"
@@ -52,8 +52,9 @@ if not GIGA_AUTH_KEY:
 _access_token: Optional[str] = None
 _access_exp: Optional[datetime] = None
 
-# ===== КЭШ ПАРСЕРА ПО СЕССИЯМ =====
+# ===== КЭШ ПАРСЕРА И СЖАТЫХ СООБЩЕНИЙ =====
 _parsed_cache: dict[str, "ParsedRequest"] = {}
+_compressed_cache: dict[str, dict] = {}
 
 
 def get_cache_key(user_id: str, message: str) -> str:
@@ -82,7 +83,25 @@ def cache_parse(user_id: str, message: str, parsed: "ParsedRequest") -> None:
         logger.info("Parser cache cleaned | remaining=%d", len(_parsed_cache))
 
 
+def get_cached_compressed(user_id: str, message: str) -> Optional[dict]:
+    """Получает кэшированное сжатое сообщение."""
+    key = get_cache_key(user_id, message)
+    return _compressed_cache.get(key)
+
+
+def cache_compressed(user_id: str, message: str, compressed: dict) -> None:
+    """Кэширует сжатое сообщение."""
+    key = get_cache_key(user_id, message)
+    _compressed_cache[key] = compressed
+    if len(_compressed_cache) > 1000:
+        keys_to_delete = list(_compressed_cache.keys())[:-500]
+        for k in keys_to_delete:
+            del _compressed_cache[k]
+        logger.info("Compressed cache cleaned | remaining=%d", len(_compressed_cache))
+
+
 def get_gigachat_token() -> str:
+    """Получает или обновляет JWT токен доступа к GigaChat API."""
     global _access_token, _access_exp
 
     if _access_token and _access_exp and datetime.utcnow() < _access_exp:
@@ -128,62 +147,164 @@ AGENT_PARAMS = {
     "marketing": {"temperature": 0.65, "max_tokens": 160, "top_p": 0.95},
     "skeptic": {"temperature": 0.6, "max_tokens": 150, "top_p": 0.9},
     "summary": {"temperature": 0.5, "max_tokens": 300, "top_p": 0.9},
+    "compressor": {"temperature": 0.2, "max_tokens": 150, "top_p": 0.85},
+    "expander": {"temperature": 0.3, "max_tokens": 400, "top_p": 0.9},
 }
+
+# ===== ПРОМПТЫ СЖИМАТЕЛЯ И РАЗЖИМАТЕЛЯ =====
+
+COMPRESSOR_SYSTEM_PROMPT = (
+    "РОЛЬ: Компрессор. Сжимаешь текстовое сообщение пользователя в структурированную выжимку (JSON).\n"
+    "ВЫХОД (ТОЛЬКО JSON, БЕЗ ТЕКСТА ВОКРУГ):\n"
+    "{\n"
+    "  \"intent\": \"одно из: validate_idea, find_risks, scale_strategy, compare_ideas, other\",\n"
+    "  \"domain\": \"одно из: product, finance, marketing, strategy, operations, hr\",\n"
+    "  \"idea_summary\": \"суть идеи в 1-2 предложениях (max 100 символов)\",\n"
+    "  \"key_points\": [\"факт 1\", \"факт 2\", \"факт 3\"],\n"
+    "  \"constraints\": {\"budget\": \"число или строка\", \"team\": \"число или строка\", \"timeline\": \"строка\"},\n"
+    "  \"assumptions\": [\"предположение 1\", \"предположение 2\"],\n"
+    "  \"key_facts\": [\"важный факт 1\", \"важный факт 2\"]\n"
+    "}\n"
+    "ТРЕБОВАНИЯ:\n"
+    "- Не добавляй текст вне JSON\n"
+    "- Сохраняй ТОЛЬКО критически важные детали\n"
+    "- intent и domain: строго из предложенного списка\n"
+    "- idea_summary: максимум 100 символов\n"
+    "- key_points: 2-5 пунктов\n"
+    "- constraints: только если упомянуты (иначе null)\n"
+    "- assumptions: неявные предположения пользователя\n"
+)
+
+EXPANDER_SYSTEM_PROMPT = (
+    "РОЛЬ: Экспандер (разжиматель). Преобразуешь сжатый JSON-ответ агента в читаемый естественный текст.\n"
+    "ВХОДНЫЕ ДАННЫЕ: сжатый JSON от агента (всегда структурирован)\n"
+    "ВЫХОДНЫЕ ДАННЫЕ: читаемый текст для пользователя (2-4 абзаца)\n"
+    "КРИТИЧЕСКИ ВАЖНО:\n"
+    "- НЕ добавляй информацию, которой нет в JSON\n"
+    "- НЕ добавляй примеры или детали от себя\n"
+    "- НЕ интерпретируй, только разворачивай\n"
+    "- Сохраняй все цифры, проценты и ключевые идеи из JSON\n"
+    "- Пиши естественно, но точно следуй источнику\n"
+)
+
+# ===== ПРОМПТЫ АГЕНТОВ В НОВОМ СЖАТОМ ФОРМАТЕ =====
 
 AGENT_SYSTEM_PROMPTS = {
     "ceo": (
-        "РОЛЬ: CEO. Анализируешь идею из ввода пользователя.\n"
-        "ВЫХОД (строго в этом порядке):\n"
-        "1) [Суть идеи] — переформулировка идеи в 1 строке\n"
-        "2) [Ход] — твой стратегический ход для масштабирования\n"
-        "3) [Verdict] — GO или NO-GO\n"
-        "4) [Confidence] — % уверенности\n"
-        "Фокусируйся на LTV/CAC, runway и стратегии роста из конкретного ввода."
+        "РОЛЬ: CEO. Анализируешь СЖАТУЮ выжимку идеи.\n"
+        "ВХОДНЫЕ ДАННЫЕ: JSON с intent, domain, idea_summary, constraints и т.д.\n"
+        "ВЫХОД ТОЛЬКО В ВИДЕ JSON (БЕЗ ТЕКСТА ВОКРУГ):\n"
+        "{\n"
+        "  \"verdict\": \"GO или NO-GO\",\n"
+        "  \"confidence\": число 0-100,\n"
+        "  \"key_strategy\": \"главная стратегическая идея (1-2 предложения)\",\n"
+        "  \"ltv_considerations\": \"ключевые факторы LTV/CAC (1-2 предложения)\",\n"
+        "  \"risks\": [\"риск 1\", \"риск 2\"],\n"
+        "  \"next_steps\": [\"шаг 1 для проверки\", \"шаг 2 для проверки\"]\n"
+        "}\n"
+        "ТРЕБОВАНИЯ:\n"
+        "- verdict: строго GO или NO-GO\n"
+        "- confidence: число от 0 до 100\n"
+        "- Фокусируйся на LTV/CAC, runway и стратегии роста\n"
+        "- НЕ добавляй текст вне JSON\n"
     ),
     "cfo": (
-        "РОЛЬ: CFO. Оцениваешь финансовую валидацию идеи пользователя.\n"
-        "ВЫХОД (строго в этом порядке):\n"
-        "1) [Гипотеза] — что нужно проверить за деньги\n"
-        "2) [Бюджет] — минимальный бюджет для теста (в USD)\n"
-        "3) [Verdict] — FAST или SLOW\n"
-        "4) [Confidence] — % уверенности\n"
-        "Ищи метрику, которую можно валидировать за 2 недели дёшево."
+        "РОЛЬ: CFO. Оцениваешь финансовую валидацию на основе СЖАТОЙ выжимки.\n"
+        "ВХОДНЫЕ ДАННЫЕ: JSON с идеей, бюджетом, ограничениями.\n"
+        "ВЫХОД ТОЛЬКО В ВИДЕ JSON (БЕЗ ТЕКСТА ВОКРУГ):\n"
+        "{\n"
+        "  \"verdict\": \"FAST или SLOW\",\n"
+        "  \"confidence\": число 0-100,\n"
+        "  \"budget_estimate\": \"минимальный бюджет в USD (число или диапазон)\",\n"
+        "  \"validation_hypothesis\": \"что нужно проверить за деньги (1 предложение)\",\n"
+        "  \"timeline\": \"сроки для 80% валидации (в неделях)\",\n"
+        "  \"roi_considerations\": [\"фактор ROI 1\", \"фактор ROI 2\"]\n"
+        "}\n"
+        "ТРЕБОВАНИЯ:\n"
+        "- verdict: строго FAST или SLOW\n"
+        "- budget_estimate: число в USD\n"
+        "- timeline: число недель\n"
+        "- Ищи метрику, валидируемую дёшево и быстро\n"
+        "- НЕ добавляй текст вне JSON\n"
     ),
     "cpo": (
-        "РОЛЬ: CPO. Ищешь конкурентный дефицит (Moat) в идее пользователя.\n"
-        "ВЫХОД (строго в этом порядке):\n"
-        "1) [Продукт] — переформулировка функции в 1 строке\n"
-        "2) [Moat] — что сложно скопировать за неделю\n"
-        "3) [Verdict] — SAFE или VULNERABLE\n"
-        "4) [Confidence] — % уверенности\n"
-        "Опирайся на конкретные функции из ввода, не используй абстракции."
+        "РОЛЬ: CPO. Ищешь конкурентный дефицит (Moat) на основе СЖАТОЙ выжимки.\n"
+        "ВХОДНЫЕ ДАННЫЕ: JSON с идеей, domain, ограничениями.\n"
+        "ВЫХОД ТОЛЬКО В ВИДЕ JSON (БЕЗ ТЕКСТА ВОКРУГ):\n"
+        "{\n"
+        "  \"verdict\": \"SAFE или VULNERABLE\",\n"
+        "  \"confidence\": число 0-100,\n"
+        "  \"moat_assessment\": \"что сложно скопировать и почему (1-2 предложения)\",\n"
+        "  \"competitive_risks\": [\"конкурент 1 или угроза 1\", \"конкурент 2 или угроза 2\"],\n"
+        "  \"differentiation\": \"ключевая отличие от конкурентов (1 предложение)\",\n"
+        "  \"defensibility_timeline\": \"сколько недель до копирования конкурентами\"\n"
+        "}\n"
+        "ТРЕБОВАНИЯ:\n"
+        "- verdict: строго SAFE или VULNERABLE\n"
+        "- confidence: число от 0 до 100\n"
+        "- defensibility_timeline: число недель\n"
+        "- Опирайся на конкретные функции, не абстракции\n"
+        "- НЕ добавляй текст вне JSON\n"
     ),
     "marketing": (
-        "РОЛЬ: VP Marketing. Придумываешь канал роста для этой идеи.\n"
-        "ВЫХОД (строго в этом порядке):\n"
-        "1) [Аудитория] — целевая аудитория из ввода\n"
-        "2) [Хак] — конкретный гроуз-хак (не 'маркетинг')\n"
-        "3) [Verdict] — SCALABLE или MANUAL\n"
-        "4) [Confidence] — % уверенности\n"
-        "Предложи механику, которая работает без найма людей."
+        "РОЛЬ: VP Marketing. Придумываешь канал роста на основе СЖАТОЙ выжимки.\n"
+        "ВХОДНЫЕ ДАННЫЕ: JSON с идеей, domain, constraints.\n"
+        "ВЫХОД ТОЛЬКО В ВИДЕ JSON (БЕЗ ТЕКСТА ВОКРУГ):\n"
+        "{\n"
+        "  \"verdict\": \"SCALABLE или MANUAL\",\n"
+        "  \"confidence\": число 0-100,\n"
+        "  \"target_audience\": \"целевая аудитория (1 предложение)\",\n"
+        "  \"growth_hack\": \"конкретный гроуз-хак, механика (1-2 предложения)\",\n"
+        "  \"channel\": \"основной канал для первых 100 клиентов\",\n"
+        "  \"unit_economics\": \"примерные CAC и LTV в идеальном сценарии\",\n"
+        "  \"scalability_bottleneck\": \"основное ограничение масштабирования\"\n"
+        "}\n"
+        "ТРЕБОВАНИЯ:\n"
+        "- verdict: строго SCALABLE или MANUAL\n"
+        "- confidence: число от 0 до 100\n"
+        "- growth_hack: конкретная механика, не общие фразы\n"
+        "- Предложи то, что работает БЕЗ найма людей на начальном этапе\n"
+        "- НЕ добавляй текст вне JSON\n"
     ),
     "skeptic": (
-        "РОЛЬ: Skeptic. Находишь фатальную дыру в идее пользователя.\n"
-        "ВЫХОД (строго в этом порядке):\n"
-        "1) [Слабое место] — самое уязвимое утверждение в идее\n"
-        "2) [Краш-тест] — как это убить за <$1K\n"
-        "3) [Verdict] — FATAL или FIXABLE\n"
-        "4) [Confidence] — % уверенности\n"
-        "Атакуй конкретные утверждения пользователя, не общие критики."
+        "РОЛЬ: Skeptic. Находишь фатальные дыры на основе СЖАТОЙ выжимки.\n"
+        "ВХОДНЫЕ ДАННЫЕ: JSON с идеей и её деталями.\n"
+        "ВЫХОД ТОЛЬКО В ВИДЕ JSON (БЕЗ ТЕКСТА ВОКРУГ):\n"
+        "{\n"
+        "  \"verdict\": \"FATAL или FIXABLE\",\n"
+        "  \"confidence\": число 0-100,\n"
+        "  \"fatal_flaw\": \"самое уязвимое утверждение в идее (1-2 предложения)\",\n"
+        "  \"crash_test\": \"как убить эту идею дёшево (<$1K) за 2 недели\",\n"
+        "  \"attack_vectors\": [\"способ атаки 1\", \"способ атаки 2\", \"способ атаки 3\"],\n"
+        "  \"counter_arguments\": [\"возможный контраргумент 1\", \"возможный контраргумент 2\"]\n"
+        "}\n"
+        "ТРЕБОВАНИЯ:\n"
+        "- verdict: строго FATAL или FIXABLE\n"
+        "- confidence: число от 0 до 100\n"
+        "- Атакуй конкретные утверждения, не общие критики\n"
+        "- crash_test: должно быть дёшево и быстро\n"
+        "- НЕ добавляй текст вне JSON\n"
     ),
     "summary": (
-        "РОЛЬ: Модератор. Синтезируешь мнения совета по ЕДИНОЙ идее.\n"
-        "ВЫХОД (строго в этом порядке):\n"
-        "1) [Идея] — суть в 1 строке\n"
-        "2) [Плюсы] — 2-3 лучших инсайта совета\n"
-        "3) [Риски] — 2-3 главных опасности\n"
-        "4) [ИТОГ] — Перспективно ли? (Recommend Go/No-Go + % уверенности)\n"
-        "Пиши структурировано, ссылайся на мнения агентов."
+        "РОЛЬ: Модератор. Синтезируешь СЖАТЫЕ мнения совета.\n"
+        "ВХОДНЫЕ ДАННЫЕ: JSON выжимки от всех агентов (CEO, CFO, CPO, Marketing, Skeptic).\n"
+        "ВЫХОД ТОЛЬКО В ВИДЕ JSON (БЕЗ ТЕКСТА ВОКРУГ):\n"
+        "{\n"
+        "  \"idea_essence\": \"суть идеи в 1-2 предложениях\",\n"
+        "  \"overall_verdict\": \"GO, CONDITIONAL_GO, NO-GO\",\n"
+        "  \"overall_confidence\": число 0-100,\n"
+        "  \"consensus_points\": [\"точка согласия 1\", \"точка согласия 2\"],\n"
+        "  \"disagreements\": [\"точка разногласия 1\"],\n"
+        "  \"key_risks\": [\"главный риск 1\", \"главный риск 2\"],\n"
+        "  \"next_validation_step\": \"первый шаг для проверки идеи\",\n"
+        "  \"board_reasoning\": \"краткое обоснование вердикта совета (1-2 предложения)\"\n"
+        "}\n"
+        "ТРЕБОВАНИЯ:\n"
+        "- overall_verdict: GO, CONDITIONAL_GO или NO-GO\n"
+        "- overall_confidence: число от 0 до 100\n"
+        "- Синтезируй мнения всех членов совета\n"
+        "- Выяви точки согласия и разногласия\n"
+        "- НЕ добавляй текст вне JSON\n"
     ),
 }
 
@@ -211,6 +332,8 @@ PARSER_SYSTEM_PROMPT = (
 )
 
 
+# ===== PYDANTIC МОДЕЛИ =====
+
 class ParsedRequest(BaseModel):
     """Структурированный запрос после парсера."""
     original_message: str
@@ -223,11 +346,82 @@ class ParsedRequest(BaseModel):
     confidence: float = 0.85
 
 
+class CompressedMessage(BaseModel):
+    """Сжатое представление сообщения пользователя."""
+    intent: str
+    domain: str
+    idea_summary: str
+    key_points: List[str] = []
+    constraints: Optional[Dict] = None
+    assumptions: List[str] = []
+    key_facts: List[str] = []
+
+
+class ChatRequest(BaseModel):
+    """Запрос для эндпойнта /api/board."""
+    message: str
+    active_agents: Optional[List[str]] = None
+    history: Optional[List[str]] = None
+    mode: Optional[str] = None
+    debug: Optional[bool] = False
+
+
+class AgentReply(BaseModel):
+    """Ответ агента (совместимо с фронтом)."""
+    agent: str
+    text: str
+    compressed: Optional[dict] = None
+
+
+class AgentReplyWithDebug(BaseModel):
+    """Ответ агента с обязательным сжатым полем."""
+    agent: str
+    text: str
+    compressed: dict
+
+
+class ChatResponseDebug(BaseModel):
+    """Расширенный ответ с полной отладочной информацией."""
+    user_message_original: str
+    user_message_compressed: dict
+    agents_replies: List[AgentReplyWithDebug]
+
+
+class SingleAgentRequest(BaseModel):
+    """Запрос для одного агента."""
+    agent: str
+    message: Optional[str] = None
+    history: Optional[List[str]] = None
+    debug: Optional[bool] = False
+
+
+class SingleAgentReply(BaseModel):
+    """Ответ одного агента."""
+    text: str
+    compressed: Optional[dict] = None
+
+
+class SummaryRequest(BaseModel):
+    """Запрос пересчёта итогов."""
+    history: Optional[List[str]] = None
+    debug: Optional[bool] = False
+
+
+class SummaryReply(BaseModel):
+    """Ответ пересчёта итогов."""
+    text: str
+    compressed: Optional[dict] = None
+
+
+class LoginRequest(BaseModel):
+    """Запрос логина."""
+    user_id: str
+
+
+# ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
+
 def parse_user_request(user_msg: str, user_id: str = "anonymous") -> ParsedRequest:
-    """
-    Парсит исходный запрос пользователя в структурированную форму.
-    Использует кэш для экономии API вызовов.
-    """
+    """Парсит исходный запрос пользователя в структурированную форму."""
     cached = get_cached_parse(user_id, user_msg)
     if cached:
         return cached
@@ -301,6 +495,124 @@ def parse_user_request(user_msg: str, user_id: str = "anonymous") -> ParsedReque
     return parsed
 
 
+def compress_user_message(user_msg: str, user_id: str = "anonymous") -> CompressedMessage:
+    """Сжимает сообщение пользователя в структурированную выжимку (JSON)."""
+    cached = get_cached_compressed(user_id, user_msg)
+    if cached:
+        logger.info("Compressed message cache hit | user=%s | message=%s", user_id, user_msg[:50])
+        return CompressedMessage(**cached)
+
+    token = get_gigachat_token()
+
+    payload = {
+        "model": "GigaChat-2",
+        "messages": [
+            {"role": "system", "content": COMPRESSOR_SYSTEM_PROMPT},
+            {"role": "user", "content": user_msg},
+        ],
+        "stream": False,
+        "temperature": AGENT_PARAMS["compressor"]["temperature"],
+        "max_tokens": AGENT_PARAMS["compressor"]["max_tokens"],
+        "top_p": AGENT_PARAMS["compressor"]["top_p"],
+    }
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    url = f"{GIGA_API_BASE}/api/v1/chat/completions"
+
+    logger.info(
+        "Compressor request -> %s | message=%s | user=%s",
+        url,
+        user_msg[:50],
+        user_id,
+    )
+
+    resp = requests.post(url, headers=headers, json=payload, timeout=60)
+    resp.raise_for_status()
+
+    j = resp.json()
+    compressor_output = j["choices"][0]["message"]["content"].strip()
+
+    logger.info(
+        "Compressor response <- %s | output=%s",
+        url,
+        compressor_output[:200],
+    )
+
+    try:
+        compressed_json = json.loads(compressor_output)
+    except json.JSONDecodeError:
+        logger.warning("Compressor output is not valid JSON: %s", compressor_output)
+        compressed_json = {
+            "intent": "other",
+            "domain": "strategy",
+            "idea_summary": user_msg[:100],
+            "key_points": [user_msg[:200]],
+            "constraints": None,
+            "assumptions": [],
+            "key_facts": []
+        }
+
+    compressed = CompressedMessage(**compressed_json)
+    cache_compressed(user_id, user_msg, compressed.dict())
+    return compressed
+
+
+def expand_agent_output(agent: str, compressed_output: dict) -> str:
+    """Разворачивает сжатый JSON-ответ агента в читаемый текст."""
+    token = get_gigachat_token()
+
+    agent_context = f"Агент: {agent.upper()}\n"
+
+    payload = {
+        "model": "GigaChat-2",
+        "messages": [
+            {"role": "system", "content": EXPANDER_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": f"{agent_context}Вот сжатый ответ (JSON), разверни в естественный текст:\n\n{json.dumps(compressed_output, ensure_ascii=False, indent=2)}"
+            },
+        ],
+        "stream": False,
+        "temperature": AGENT_PARAMS["expander"]["temperature"],
+        "max_tokens": AGENT_PARAMS["expander"]["max_tokens"],
+        "top_p": AGENT_PARAMS["expander"]["top_p"],
+    }
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    url = f"{GIGA_API_BASE}/api/v1/chat/completions"
+
+    logger.info(
+        "Expander request -> %s | agent=%s",
+        url,
+        agent,
+    )
+
+    resp = requests.post(url, headers=headers, json=payload, timeout=60)
+    resp.raise_for_status()
+
+    j = resp.json()
+    expanded_text = j["choices"][0]["message"]["content"].strip()
+
+    logger.info(
+        "Expander response <- %s | agent=%s | text_len=%d",
+        url,
+        agent,
+        len(expanded_text),
+    )
+
+    return expanded_text
+
+
 def compress_history(history: Optional[List[str]], max_items: int = 5) -> str:
     """Сжимает историю до последних N сообщений для экономии токенов."""
     if not history:
@@ -310,10 +622,7 @@ def compress_history(history: Optional[List[str]], max_items: int = 5) -> str:
 
 
 def ask_gigachat(agent: str, user_msg: str) -> str:
-    """
-    Запрос к GigaChat с оптимизированными параметрами.
-    user_msg уже содержит все необходимые данные.
-    """
+    """Запрос к GigaChat с оптимизированными параметрами."""
     token = get_gigachat_token()
     system_prompt = AGENT_SYSTEM_PROMPTS[agent]
     params = AGENT_PARAMS[agent]
@@ -362,7 +671,7 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
     return j["choices"][0]["message"]["content"].strip()
 
 
-# ===== FastAPI-приложение =====
+# ===== FASTAPI ПРИЛОЖЕНИЕ =====
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
@@ -370,6 +679,7 @@ app = FastAPI()
 
 @app.on_event("startup")
 def on_startup():
+    """Инициализация при запуске приложения."""
     init_db()
 
 
@@ -390,42 +700,8 @@ app.add_middleware(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# ===== Модели =====
 
-
-class ChatRequest(BaseModel):
-    message: str
-    active_agents: Optional[List[str]] = None
-    history: Optional[List[str]] = None
-    mode: Optional[str] = None
-
-
-class AgentReply(BaseModel):
-    agent: str
-    text: str
-
-
-class SingleAgentRequest(BaseModel):
-    agent: str
-    message: Optional[str] = None
-    history: Optional[List[str]] = None
-
-
-class SingleAgentReply(BaseModel):
-    text: str
-
-
-class SummaryRequest(BaseModel):
-    history: Optional[List[str]] = None
-
-
-class SummaryReply(BaseModel):
-    text: str
-
-
-class LoginRequest(BaseModel):
-    user_id: str
-
+# ===== ENDPOINTS =====
 
 @app.post("/api/login", response_model=TokenResponse)
 async def login(
@@ -438,29 +714,30 @@ async def login(
     return TokenResponse(access_token=token)
 
 
-# ===== ОПТИМИЗИРОВАННАЯ ЦЕПОЧКА СОВЕТА С ПАРСЕРОМ И КЭШЕМ =====
-
-
-@app.post("/api/board", response_model=List[AgentReply])
+@app.post("/api/board")
 @limiter.limit("10/minute")
 async def board_chat(
     req: ChatRequest,
     request: Request,
     user_id: str = Depends(verify_token),
-):
+) -> Union[List[AgentReply], Dict]:
     """
-    Оптимизированная версия board_chat с парсером и кэшем.
-    1. Парсим исходный запрос пользователя (с кэшем).
-    2. Все агенты получают структурированный запрос.
+    Оптимизированная версия board_chat с компрессией.
+    1. Сжимаем исходный запрос пользователя
+    2. Все агенты получают СЖАТУЮ выжимку и отвечают в СЖАТОМ формате
+    3. Разжимаем ответы для пользователя
+    4. Возвращаем: разжатый текст для UI + (опционально) сжатую версию для отладки
     """
     user_msg = req.message
     mode = req.mode or "initial"
+    debug = req.debug or False
 
     logger.info(
-        "Incoming /api/board message: %s | active_agents=%s | mode=%s | user=%s",
+        "Incoming /api/board message: %s | active_agents=%s | mode=%s | debug=%s | user=%s",
         user_msg[:50],
         req.active_agents,
         mode,
+        debug,
         user_id,
     )
 
@@ -468,78 +745,108 @@ async def board_chat(
     active = req.active_agents if req.active_agents is not None else order
     active_ordered = [a for a in order if a in active]
 
+    # Шаг 1: Сжимаем исходное сообщение пользователя
+    compressed_user_msg = compress_user_message(user_msg, user_id=user_id)
+    logger.info(
+        "Compressed user message | intent=%s | domain=%s | idea_summary=%s",
+        compressed_user_msg.intent,
+        compressed_user_msg.domain,
+        compressed_user_msg.idea_summary,
+    )
+
     replies: List[AgentReply] = []
-    ctx: dict[str, str] = {}
+    ctx: dict[str, dict] = {}  # Хранит СЖАТЫЕ ответы (dict)
 
     try:
-        parsed_request = parse_user_request(user_msg, user_id=user_id)
-        logger.info(
-            "Parsed request | intent=%s | domain=%s | key_points=%s",
-            parsed_request.intent,
-            parsed_request.domain,
-            parsed_request.key_points,
-        )
-
+        # Шаг 2: Обрабатываем каждого агента
         for agent in active_ordered:
-            key_points_str = (', '.join(parsed_request.key_points) 
-                            if parsed_request.key_points else 'нет')
-            assumptions_str = (', '.join(parsed_request.assumptions) 
-                             if parsed_request.assumptions else 'нет')
-            constraints_str = (', '.join(parsed_request.constraints) 
-                             if parsed_request.constraints else 'нет')
-            summary_str = (parsed_request.summary or 
-                          parsed_request.original_message[:200])
-            
+            # Строим контекст из сжатых данных
             parts: List[str] = [
-                "СТРУКТУРИРОВАННЫЙ ЗАПРОС (из парсера):",
-                f"• Цель: {parsed_request.intent}",
-                f"• Область: {parsed_request.domain}",
-                f"• Ключевые точки: {key_points_str}",
-                f"• Предположения: {assumptions_str}",
-                f"• Ограничения: {constraints_str}",
-                f"• Краткое резюме: {summary_str}",
+                "СЖАТЫЙ ЗАПРОС ПОЛЬЗОВАТЕЛЯ (JSON):",
+                json.dumps(compressed_user_msg.dict(), ensure_ascii=False, indent=2),
             ]
 
-            compressed = compress_history(req.history, max_items=5)
-            if compressed:
-                parts.append(
-                    "\nВЫДЕЖКА ИЗ ИСТОРИИ (последние 5 сообщений):\n" + compressed
-                )
-
+            # Добавляем сжатые мнения предыдущих агентов
             if ctx:
-                parts.append("\nМНЕНИЯ ДРУГИХ ЧЛЕНОВ СОВЕТА:")
+                parts.append("\nСЖАТЫЕ МНЕНИЯ ДРУГИХ ЧЛЕНОВ СОВЕТА (JSON):")
                 for prev_agent in order:
                     if prev_agent in ctx:
-                        parts.append(f"{prev_agent.upper()}: {ctx[prev_agent]}")
+                        parts.append(f"{prev_agent}:")
+                        parts.append(json.dumps(ctx[prev_agent], ensure_ascii=False, indent=2))
 
-            agent_input = "\n".join(parts)
-            text = ask_gigachat(agent, agent_input)
-            ctx[agent] = text
-            replies.append(AgentReply(agent=agent, text=text))
-
-        if mode == "initial":
-            key_points_str = (', '.join(parsed_request.key_points) 
-                            if parsed_request.key_points else 'нет')
-            
-            summary_parts: List[str] = [
-                "СТРУКТУРИРОВАННЫЙ ЗАПРОС:",
-                f"• Цель: {parsed_request.intent}",
-                f"• Область: {parsed_request.domain}",
-                f"• Ключевые точки: {key_points_str}",
-                "",
-                "МНЕНИЯ СОВЕТА:",
-            ]
-            for agent in active_ordered:
-                if agent in ctx:
-                    summary_parts.append(f"{agent.upper()}: {ctx[agent]}")
-
+            # Добавляем историю (сжатую)
             compressed = compress_history(req.history, max_items=5)
             if compressed:
-                summary_parts.append("\nВЫДЕЖКА ИЗ ИСТОРИИ:\n" + compressed)
+                parts.append("\nВЫДЕЖКА ИЗ ИСТОРИИ (последние 5 сообщений):")
+                parts.append(compressed)
+
+            agent_input = "\n".join(parts)
+
+            # Получаем СЖАТЫЙ ответ от агента
+            raw_response = ask_gigachat(agent, agent_input)
+
+            # Парсим JSON ответ
+            try:
+                compressed_response = json.loads(raw_response)
+                logger.info(
+                    "Agent %s returned valid JSON | verdict=%s",
+                    agent,
+                    compressed_response.get("verdict", "N/A"),
+                )
+            except json.JSONDecodeError:
+                logger.warning("Agent %s returned non-JSON response: %s", agent, raw_response)
+                compressed_response = {
+                    "verdict": "NO-DATA",
+                    "confidence": 0,
+                    "raw_response": raw_response
+                }
+
+            # Сохраняем сжатый ответ для следующих агентов
+            ctx[agent] = compressed_response
+
+            # Разжимаем для фронта
+            expanded_text = expand_agent_output(agent, compressed_response)
+
+            # Возвращаем: разжатый текст + опционально сжатый (для отладки)
+            reply = AgentReply(
+                agent=agent,
+                text=expanded_text,
+                compressed=compressed_response if debug else None
+            )
+            replies.append(reply)
+
+        # Шаг 3: Summary агент (если mode="initial")
+        if mode == "initial":
+            summary_parts: List[str] = [
+                "СЖАТЫЙ ЗАПРОС ПОЛЬЗОВАТЕЛЯ (JSON):",
+                json.dumps(compressed_user_msg.dict(), ensure_ascii=False, indent=2),
+                "",
+                "СЖАТЫЕ МНЕНИЯ СОВЕТА (JSON):",
+            ]
+
+            for agent in active_ordered:
+                if agent in ctx:
+                    summary_parts.append(f"{agent}:")
+                    summary_parts.append(json.dumps(ctx[agent], ensure_ascii=False, indent=2))
 
             summary_input = "\n".join(summary_parts)
-            summary_text = ask_gigachat("summary", summary_input)
-            replies.append(AgentReply(agent="summary", text=summary_text))
+
+            raw_summary = ask_gigachat("summary", summary_input)
+
+            try:
+                compressed_summary = json.loads(raw_summary)
+            except json.JSONDecodeError:
+                logger.warning("Summary agent returned non-JSON: %s", raw_summary)
+                compressed_summary = {"overall_verdict": "NO-DATA", "raw_response": raw_summary}
+
+            expanded_summary = expand_agent_output("summary", compressed_summary)
+
+            reply = AgentReply(
+                agent="summary",
+                text=expanded_summary,
+                compressed=compressed_summary if debug else None
+            )
+            replies.append(reply)
 
     except Exception as e:
         logger.exception("Error while calling GigaChat board chain | user=%s", user_id)
@@ -548,10 +855,29 @@ async def board_chat(
         )
 
     logger.info(
-        "Outgoing /api/board | agents=%s | reply_count=%d",
+        "Outgoing /api/board | agents=%s | reply_count=%d | debug=%s",
         active_ordered,
         len(replies),
+        debug,
     )
+
+    # Если debug=True, возвращаем расширенный ответ с отладкой
+    if debug:
+        valid_replies = [r for r in replies if r.agent != "error"]
+        return ChatResponseDebug(
+            user_message_original=user_msg,
+            user_message_compressed=compressed_user_msg.dict(),
+            agents_replies=[
+                AgentReplyWithDebug(
+                    agent=r.agent,
+                    text=r.text,
+                    compressed=r.compressed or {}
+                )
+                for r in valid_replies
+            ]
+        ).dict()
+
+    # Иначе возвращаем обычный список AgentReply (обратная совместимость)
     return replies
 
 
@@ -562,12 +888,13 @@ async def single_agent(
     request: Request,
     user_id: str = Depends(verify_token),
 ):
-    """Одиночный агент с парсером (если передано сообщение) + сокращённой историей."""
+    """Одиночный агент с компрессией."""
     logger.info(
-        "Incoming /api/agent: agent=%s | message=%s | user=%s",
+        "Incoming /api/agent: agent=%s | message=%s | user=%s | debug=%s",
         req.agent,
         (req.message or "")[:50] if req.message else "None",
         user_id,
+        req.debug,
     )
 
     if req.agent not in AGENT_SYSTEM_PROMPTS:
@@ -576,37 +903,22 @@ async def single_agent(
     parts: List[str] = []
 
     if req.message:
-        parsed_request = parse_user_request(req.message, user_id=user_id)
+        compressed_msg = compress_user_message(req.message, user_id=user_id)
         logger.info(
-            "Parsed single message | intent=%s | domain=%s",
-            parsed_request.intent,
-            parsed_request.domain,
+            "Compressed single message | intent=%s | domain=%s",
+            compressed_msg.intent,
+            compressed_msg.domain,
         )
-        
-        key_points_str = (', '.join(parsed_request.key_points) 
-                        if parsed_request.key_points else 'нет')
-        assumptions_str = (', '.join(parsed_request.assumptions) 
-                         if parsed_request.assumptions else 'нет')
-        constraints_str = (', '.join(parsed_request.constraints) 
-                         if parsed_request.constraints else 'нет')
-        summary_str = (parsed_request.summary or 
-                      parsed_request.original_message[:200])
-        
-        parts.extend(
-            [
-                "СТРУКТУРИРОВАННЫЙ ЗАПРОС:",
-                f"• Цель: {parsed_request.intent}",
-                f"• Область: {parsed_request.domain}",
-                f"• Ключевые точки: {key_points_str}",
-                f"• Предположения: {assumptions_str}",
-                f"• Ограничения: {constraints_str}",
-                f"• Краткое резюме: {summary_str}",
-            ]
-        )
+
+        parts.extend([
+            "СЖАТЫЙ ЗАПРОС (JSON):",
+            json.dumps(compressed_msg.dict(), ensure_ascii=False, indent=2),
+        ])
 
     compressed = compress_history(req.history, max_items=5)
     if compressed:
-        parts.append("\nВЫДЕЖКА ИЗ ИСТОРИИ (последние 5):\n" + compressed)
+        parts.append("\nВЫДЕЖКА ИЗ ИСТОРИИ (последние 5):")
+        parts.append(compressed)
 
     if not parts:
         parts.append(
@@ -616,12 +928,25 @@ async def single_agent(
     full_content = "\n".join(parts)
 
     try:
-        text = ask_gigachat(req.agent, full_content)
+        raw_response = ask_gigachat(req.agent, full_content)
+
+        try:
+            compressed_response = json.loads(raw_response)
+        except json.JSONDecodeError:
+            logger.warning("Agent %s returned non-JSON: %s", req.agent, raw_response)
+            compressed_response = {"raw_response": raw_response}
+
+        expanded_text = expand_agent_output(req.agent, compressed_response)
+
+        return SingleAgentReply(
+            text=expanded_text,
+            compressed=compressed_response if req.debug else None
+        )
     except Exception as e:
         logger.exception("Error in /api/agent | agent=%s | user=%s", req.agent, user_id)
-        text = f"Ошибка при обращении к GigaChat для агента {req.agent}: {e}"
-
-    return SingleAgentReply(text=text)
+        return SingleAgentReply(
+            text=f"Ошибка при обращении к GigaChat для агента {req.agent}: {e}"
+        )
 
 
 @app.post("/api/summary", response_model=SummaryReply)
@@ -633,9 +958,10 @@ async def recalc_summary(
 ):
     """Пересчёт итогов на основе последней истории обсуждения."""
     logger.info(
-        "Incoming /api/summary | history_len=%s | user=%s",
+        "Incoming /api/summary | history_len=%s | user=%s | debug=%s",
         len(req.history) if req.history else 0,
         user_id,
+        req.debug,
     )
 
     compressed = compress_history(req.history, max_items=5)
@@ -653,9 +979,22 @@ async def recalc_summary(
     )
 
     try:
-        text = ask_gigachat("summary", summary_input)
+        raw_response = ask_gigachat("summary", summary_input)
+
+        try:
+            compressed_response = json.loads(raw_response)
+        except json.JSONDecodeError:
+            logger.warning("Summary returned non-JSON: %s", raw_response)
+            compressed_response = {"raw_response": raw_response}
+
+        expanded_text = expand_agent_output("summary", compressed_response)
+
+        return SummaryReply(
+            text=expanded_text,
+            compressed=compressed_response if req.debug else None
+        )
     except Exception as e:
         logger.exception("Error in /api/summary | user=%s", user_id)
-        text = f"Ошибка при обращении к GigaChat для пересчёта итогов: {e}"
-
-    return SummaryReply(text=text)
+        return SummaryReply(
+            text=f"Ошибка при обращении к GigaChat для пересчёта итогов: {e}"
+        )
