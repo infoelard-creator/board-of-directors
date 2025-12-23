@@ -39,13 +39,24 @@ def create_access_token(user_id: str) -> str:
     """
     Создаёт JWT токен доступа для пользователя.
 
-    Args:
-        user_id: ID пользователя
-
-    Returns:
-        Подписанный JWT токен
+    ✅ FIX B3: округляем exp до ближайшей минуты вверх.
     """
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    # Текущее время в UTC
+    now = datetime.now(timezone.utc)
+
+    # Время истечения как раньше: сейчас + 7 дней
+    expire_time = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    # Переводим в timestamp (секунды)
+    expire_timestamp = int(expire_time.timestamp())
+
+    # Если не ровная минута → округляем вверх до следующей минуты
+    if expire_timestamp % 60 != 0:
+        expire_timestamp = (expire_timestamp // 60 + 1) * 60
+
+    # Обратно в datetime с таймзоной UTC
+    expire = datetime.fromtimestamp(expire_timestamp, tz=timezone.utc)
+
     to_encode = {"user_id": user_id, "exp": expire}
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
