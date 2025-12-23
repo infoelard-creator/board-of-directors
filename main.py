@@ -16,6 +16,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 from db import init_db, get_db, create_user_if_not_exists, User
 from sqlalchemy.orm import Session
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ===== ЛОГИРОВАНИЕ =====
 
@@ -122,7 +124,7 @@ def get_gigachat_token() -> str:
         data,
     )
 
-    resp = requests.post(GIGA_AUTH_URL, headers=headers, data=data, timeout=10)
+    resp = requests.post(GIGA_AUTH_URL, headers=headers, data=data, timeout=10, verify=False)
 
     logger.info(
         "Auth response <- %s | status=%s | body=%s",
@@ -482,7 +484,7 @@ def parse_user_request(user_msg: str, user_id: str = "anonymous") -> ParsedReque
         user_id,
     )
 
-    resp = requests.post(url, headers=headers, json=payload, timeout=60)
+    resp = requests.post(url, headers=headers, json=payload, timeout=60, verify=False)
     resp.raise_for_status()
 
     j = resp.json()
@@ -558,7 +560,7 @@ def compress_user_message(user_msg: str, user_id: str = "anonymous") -> Compress
         user_id,
     )
 
-    resp = requests.post(url, headers=headers, json=payload, timeout=60)
+    resp = requests.post(url, headers=headers, json=payload, timeout=60, verify=False)
     resp.raise_for_status()
 
     j = resp.json()
@@ -624,7 +626,7 @@ def expand_agent_output(agent: str, compressed_output: dict) -> str:
         agent,
     )
 
-    resp = requests.post(url, headers=headers, json=payload, timeout=60)
+    resp = requests.post(url, headers=headers, json=payload, timeout=60, verify=False)
     resp.raise_for_status()
 
     j = resp.json()
@@ -684,7 +686,7 @@ def ask_gigachat(agent: str, user_msg: str) -> str:
         params["max_tokens"],
     )
 
-    resp = requests.post(url, headers=headers, json=payload, timeout=60)
+    resp = requests.post(url, headers=headers, json=payload, timeout=60, verify=False)
 
     logger.info(
         "Chat response <- %s | agent=%s | status=%s",
