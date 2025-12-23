@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import logging
 from logging.handlers import RotatingFileHandler
-from db import init_db, get_db, create_user_if_not_exists
+from db import init_db, get_db, create_user_if_not_exists, User
 from sqlalchemy.orm import Session
 
 # ===== ЛОГИРОВАНИЕ =====
@@ -185,6 +185,10 @@ EXPANDER_SYSTEM_PROMPT = (
     "- НЕ интерпретируй, только разворачивай\n"
     "- Сохраняй все цифры, проценты и ключевые идеи из JSON\n"
     "- Пиши естественно, но точно следуй источнику\n"
+    "- Структурируй ответ в виде:\n"
+    "  [Verdict] — значение\n"
+    "  [Confidence] — число%\n"
+    "  [Ключевой элемент] — описание\n"
 )
 
 # ===== ПРОМПТЫ АГЕНТОВ В НОВОМ СЖАТОМ ФОРМАТЕ =====
