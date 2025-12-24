@@ -2,34 +2,39 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Board.AI — Совет директоров на GigaChat</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 0;
+            padding: 20px;
         }
 
         .container {
             display: flex;
             width: 100%;
             max-width: 1200px;
-            height: 100vh;
+            height: 85vh;
             background: white;
-            border-radius: 0;
+            border-radius: 12px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
+            position: relative;
         }
 
+        /* ===== SIDEBAR (DESKTOP) ===== */
         .sidebar {
             width: 280px;
             background: #f8f9fa;
@@ -39,130 +44,8 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
-        }
-
-        /* Мобильная адаптация (<768px) */
-        @media (max-width: 767px) {
-            body {
-                padding: 0;
-            }
-
-            .container {
-                border-radius: 0;
-                height: 100vh;
-            }
-
-            .sidebar {
-                display: none;
-            }
-
-            .sidebar.mobile-open {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                max-width: 100%;
-                height: 100%;
-                z-index: 1000;
-                border-right: none;
-                border-radius: 0;
-                padding: 16px;
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .sidebar-overlay {
-                display: none;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.5);
-                z-index: 999;
-            }
-
-            .sidebar-overlay.visible {
-                display: block;
-            }
-        }
-
-        /* ===== МОБИЛЬНАЯ ТАБНАЯ НАВИГАЦИЯ ===== */
-        .mobile-tabs {
-            display: none;
-            gap: 8px;
-            padding: 12px 16px 0 16px;
-            background: white;
-            border-bottom: 1px solid #e9ecef;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        @media (max-width: 767px) {
-            .mobile-tabs {
-                display: flex;
-            }
-        }
-
-        .mobile-tab-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            padding: 8px 12px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: all 200ms;
-            min-width: fit-content;
-            font-size: 12px;
-            color: #666;
-            font-weight: 500;
-        }
-
-        .mobile-tab-btn:hover {
-            background: #f0f2f5;
-        }
-
-        .mobile-tab-btn.active {
-            background: #e7f3ff;
-            color: #0c5aa0;
-        }
-
-        .mobile-tab-btn .agent-icon {
-            font-size: 20px;
-        }
-
-        .mobile-hamburger {
-            display: none;
-            position: fixed;
-            top: 16px;
-            right: 16px;
-            z-index: 998;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 12px;
-            cursor: pointer;
-            font-size: 20px;
-            width: 44px;
-            height: 44px;
-            align-items: center;
-            justify-content: center;
-        }
-
-        @media (max-width: 767px) {
-            .mobile-hamburger {
-                display: flex;
-            }
-        }
-
-        .mobile-hamburger.close {
-            top: 20px;
-            background: #764ba2;
+            z-index: 20;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .agents-section h3 {
@@ -184,6 +67,7 @@
             transition: all 200ms;
             background: white;
             border: 1px solid #e9ecef;
+            user-select: none;
         }
 
         .agent-item:hover {
@@ -215,47 +99,123 @@
             flex: 1;
         }
 
-        .debug-toggle {
+        /* ===== MOBILE HEADER & NAV ===== */
+        .mobile-header {
+            display: none; /* Hidden on desktop */
+            height: 60px;
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .mobile-menu-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #333;
+            cursor: pointer;
+            padding: 8px;
+            line-height: 1;
+            min-width: 44px;
+            min-height: 44px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 10px;
-            border-radius: 8px;
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            cursor: pointer;
+            justify-content: center;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
-        .debug-toggle input[type="checkbox"] {
-            cursor: pointer;
-            width: 16px;
-            height: 16px;
-        }
-
-        .debug-toggle label {
-            font-size: 13px;
-            cursor: pointer;
+        .mobile-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
             flex: 1;
+            text-align: center;
         }
 
+        /* Tab Navigation for Mobile */
+        .mobile-tabs {
+            display: none; /* Hidden on desktop */
+            height: 50px;
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+            align-items: center;
+            padding: 0 8px;
+            overflow-x: auto;
+            position: fixed;
+            top: 60px; /* Below header */
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 99;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .mobile-tab {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+            cursor: pointer;
+            min-width: 60px;
+        }
+
+        .mobile-tab.active {
+            opacity: 1;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .mobile-tab-icon {
+            font-size: 18px;
+        }
+        
+        .mobile-tab-label {
+            font-size: 10px;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 15;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        /* ===== MAIN AREA ===== */
         .main {
             flex: 1;
             display: flex;
             flex-direction: column;
             position: relative;
+            height: 100%;
         }
 
         .chat-area {
             flex: 1;
-            padding: 16px;
+            padding: 20px;
             overflow-y: auto;
             background: #ffffff;
-        }
-
-        @media (max-width: 767px) {
-            .chat-area {
-                padding: 12px;
-            }
+            scroll-behavior: smooth;
         }
 
         .empty-state {
@@ -266,6 +226,7 @@
             height: 100%;
             color: #999;
             text-align: center;
+            padding: 20px;
         }
 
         .empty-state h2 {
@@ -280,26 +241,30 @@
             line-height: 1.5;
         }
 
+        /* ===== MESSAGES ===== */
         .message {
             margin-bottom: 16px;
             padding: 12px 16px;
             border-radius: 8px;
             line-height: 1.5;
             font-size: 14px;
+            max-width: 90%;
         }
 
         .message.user {
             background: #e7f3ff;
             color: #0c5aa0;
-            margin-left: 40px;
+            margin-left: auto; /* Right align */
             text-align: left;
+            border-bottom-right-radius: 2px;
         }
 
         .message.agent {
             background: #f5f5f5;
             color: #333;
-            margin-right: 40px;
+            margin-right: auto; /* Left align */
             border-left: 4px solid #667eea;
+            border-bottom-left-radius: 2px;
         }
 
         .message-header {
@@ -312,10 +277,6 @@
             color: #667eea;
         }
 
-        .agent-icon {
-            font-size: 16px;
-        }
-
         .message-content {
             display: flex;
             flex-direction: column;
@@ -324,87 +285,51 @@
 
         .content-section {
             display: flex;
-            align-items: flex-start;
-            gap: 8px;
+            flex-direction: column; /* Stack on mobile by default */
+            gap: 4px;
         }
 
         .section-label {
             font-weight: 600;
-            font-size: 12px;
+            font-size: 11px;
             text-transform: uppercase;
-            color: #667eea;
-            min-width: 100px;
-            padding-top: 2px;
+            color: #8898aa;
         }
 
         .section-value {
-            flex: 1;
             color: #333;
         }
 
+        /* Badges */
         .badge {
             display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .badge.go {
+        .badge.go, .badge.fast, .badge.safe, .badge.scalable {
             background: #d4edda;
             color: #155724;
         }
 
-        .badge.no-go {
+        .badge.no-go, .badge.vulnerable, .badge.fatal {
             background: #f8d7da;
             color: #721c24;
         }
 
-        .badge.fast {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .badge.slow {
+        .badge.slow, .badge.manual, .badge.fixable {
             background: #fff3cd;
             color: #856404;
         }
 
-        .badge.safe {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .badge.vulnerable {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .badge.scalable {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .badge.manual {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .badge.fixable {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .badge.fatal {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        /* ✅ ФИКС: Прогресс-бар с процентом */
+        /* Confidence Bar */
         .confidence-bar {
             width: 100%;
-            height: 24px;
+            height: 18px;
             background: #e9ecef;
             border-radius: 4px;
             overflow: hidden;
@@ -422,99 +347,117 @@
 
         .confidence-text {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 12px;
+            left: 8px;
+            font-size: 10px;
             font-weight: 600;
-            color: #333;
-            white-space: nowrap;
-            z-index: 10;
-            pointer-events: none;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            z-index: 2;
         }
 
+        /* ===== INPUT AREA ===== */
         .input-area {
             padding: 16px;
             border-top: 1px solid #e9ecef;
             background: #f8f9fa;
             display: flex;
             gap: 8px;
+            position: relative;
+            z-index: 5;
         }
 
         #messageInput {
             flex: 1;
             padding: 12px;
             border: 1px solid #e9ecef;
-            border-radius: 8px;
+            border-radius: 20px;
             font-size: 14px;
             font-family: inherit;
             resize: none;
             max-height: 100px;
+            outline: none;
+            transition: border-color 0.2s;
         }
 
         #messageInput:focus {
-            outline: none;
             border-color: #667eea;
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
         }
 
         #sendBtn {
-            padding: 12px 24px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
             background: #667eea;
             color: white;
             border: none;
-            border-radius: 8px;
             cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 200ms;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            flex-shrink: 0;
         }
 
         #sendBtn:hover:not(:disabled) {
             background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transform: scale(1.05);
         }
 
         #sendBtn:disabled {
             background: #ccc;
-            cursor: not-allowed;
-            opacity: 0.5;
+            cursor: default;
+        }
+
+        #sendBtn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+            margin-left: 2px; /* Visual centering adjustment */
+        }
+
+        /* Debug & Summary buttons in Sidebar */
+        .debug-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            cursor: pointer;
+            margin-top: auto;
         }
 
         #summaryBtn {
-            padding: 12px 24px;
+            width: 100%;
+            padding: 12px;
             background: #764ba2;
             color: white;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 14px;
-            display: none;
-            transition: all 200ms;
+            font-size: 13px;
+            margin-top: 10px;
+            transition: opacity 0.2s;
         }
-
-        #summaryBtn:hover:not(:disabled) {
-            background: #653a85;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(118, 75, 162, 0.4);
-        }
-
+        
         #summaryBtn:disabled {
             background: #ccc;
             cursor: not-allowed;
-            opacity: 0.5;
         }
 
+        /* ===== SKELETON LOADING ===== */
         .skeleton {
             display: flex;
-            gap: 8px;
+            flex-direction: column;
+            gap: 6px;
             margin-bottom: 16px;
+            width: 100%;
         }
 
         .skeleton-line {
-            height: 12px;
+            height: 10px;
             background: linear-gradient(90deg, #e9ecef 25%, #f0f2f5 50%, #e9ecef 75%);
             background-size: 200% 100%;
             animation: loading 1.5s infinite;
@@ -526,135 +469,96 @@
             100% { background-position: -200% 0; }
         }
 
-        /* ===== DEBUG PANEL ===== */
-        .debug-panel {
-            background: #f5f5f5;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 12px;
-            margin-top: 12px;
-            font-size: 12px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            display: none;
+        /* ===== RESPONSIVE STYLES (Mobile First Approach) ===== */
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+                align-items: flex-start;
+                background: #f0f2f5; /* Simpler bg for mobile */
+            }
+
+            .container {
+                height: 100vh;
+                border-radius: 0;
+                flex-direction: column;
+            }
+
+            .mobile-header, .mobile-tabs {
+                display: flex;
+            }
+
+            .sidebar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                height: 100%;
+                transform: translateX(-100%); /* Hidden by default */
+                z-index: 30;
+                width: 80%; /* Takes most of screen */
+                box-shadow: 4px 0 16px rgba(0,0,0,0.1);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .overlay.visible {
+                display: block;
+                opacity: 1;
+            }
+
+            .chat-area {
+                padding-top: 120px; /* Space for Header + Tabs */
+                padding-bottom: 80px; /* Space for Input */
+            }
+
+            .message {
+                max-width: 95%; /* Wider messages on mobile */
+            }
+
+            /* Adjust content layout for mobile */
+            .content-section {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .section-label {
+                min-width: auto;
+                margin-bottom: 2px;
+            }
         }
 
-        .debug-panel.visible {
-            display: block;
-        }
-
-        .debug-panel-title {
-            font-weight: 600;
-            font-size: 11px;
-            text-transform: uppercase;
-            color: #666;
-            margin-bottom: 8px;
-            letter-spacing: 1px;
-        }
-
-        .debug-row {
-            display: flex;
-            gap: 12px;
-            padding: 6px 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .debug-row:last-child {
-            border-bottom: none;
-        }
-
-        .debug-label {
-            font-weight: 600;
-            color: #666;
-            min-width: 120px;
-        }
-
-        .debug-value {
-            color: #333;
-            word-break: break-all;
-            flex: 1;
-        }
-
-        .debug-value.metric {
-            color: #208090;
-            font-weight: 600;
-        }
-
-        .debug-tokens {
-            display: flex;
-            gap: 16px;
-        }
-
-        .debug-token-item {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .debug-token-label {
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #999;
-        }
-
-        .debug-token-value {
-            font-size: 13px;
-            font-weight: 600;
-            color: #208090;
-        }
-
-        .debug-json {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 8px;
-            margin-top: 8px;
-            max-height: 200px;
-            overflow: auto;
-            word-break: break-all;
-            font-size: 11px;
-        }
-
-        .debug-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .debug-tab {
-            padding: 6px 12px;
-            background: none;
-            border: none;
-            border-bottom: 2px solid transparent;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 600;
-            color: #666;
-            transition: all 200ms;
-        }
-
-        .debug-tab:hover {
-            color: #208090;
-        }
-
-        .debug-tab.active {
-            color: #208090;
-            border-bottom-color: #208090;
-        }
-
-        .debug-content {
-            display: none;
-        }
-
-        .debug-content.active {
-            display: block;
+        @media (min-width: 769px) {
+            .content-section {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+            
+            .section-label {
+                min-width: 100px;
+                padding-top: 2px;
+            }
         }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <!-- Sidebar -->
-        <div class="sidebar">
+        <!-- Mobile Header -->
+        <div class="mobile-header">
+            <button class="mobile-menu-btn" id="menuBtn">☰</button>
+            <div class="mobile-title">Board.AI</div>
+            <div style="width: 24px;"></div> <!-- Spacer -->
+        </div>
+
+        <!-- Mobile Tabs (Agents) -->
+        <div class="mobile-tabs" id="mobileTabs">
+            <!-- Populated via JS -->
+        </div>
+
+        <!-- Sidebar / Drawer -->
+        <div class="overlay" id="overlay"></div>
+        <div class="sidebar" id="sidebar">
             <div class="agents-section">
                 <h3>Члены совета</h3>
                 <div id="agentsList"></div>
@@ -675,133 +579,154 @@
             <div class="chat-area" id="chatArea">
                 <div class="empty-state">
                     <h2>🎯 Board.AI</h2>
-                    <p>Многоагентная платформа для анализа идей и бизнес-решений на базе GigaChat</p>
+                    <p>Совет директоров в вашем кармане.<br>Анализ идей и бизнес-решений.</p>
                 </div>
             </div>
 
             <div class="input-area">
-                <textarea id="messageInput" placeholder="Опишите вашу идею или вопрос..."></textarea>
-                <button id="sendBtn" disabled>Отправить</button>
+                <textarea id="messageInput" placeholder="Опишите идею..." rows="1"></textarea>
+                <button id="sendBtn" disabled>
+                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                </button>
             </div>
         </div>
     </div>
 
     <script>
-        // ===== КОНФИГУРАЦИЯ =====
-
+        // ===== CONFIGURATION =====
         let authToken = null;
         let selectedAgents = new Set();
         let chatHistory = [];
         let isLoading = false;
         let hasSummary = false;
-        let lastRoundAgents = [];
 
         const agents = {
             "ceo": { name: "CEO", icon: "👔", color: "#667eea" },
             "cfo": { name: "CFO", icon: "💰", color: "#764ba2" },
             "cpo": { name: "CPO", icon: "🎯", color: "#f093fb" },
             "marketing": { name: "Marketing", icon: "📢", color: "#4facfe" },
-            "skeptic": { name: "Skeptic", icon: "⚠️", color: "#fa709a" },
-            "summary": { name: "Модератор", icon: "📊", color: "#30b0c0" },
+            "skeptic": { name: "Skeptic", icon: "⚠️", color: "#fa709a" }
         };
 
+        const agentKeys = Object.keys(agents);
+        
+        // DOM Elements
         const chatArea = document.getElementById("chatArea");
         const messageInput = document.getElementById("messageInput");
         const sendBtn = document.getElementById("sendBtn");
         const summaryBtn = document.getElementById("summaryBtn");
         const debugCheckbox = document.getElementById("debugCheckbox");
         const agentsList = document.getElementById("agentsList");
+        const mobileTabs = document.getElementById("mobileTabs");
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("overlay");
+        const menuBtn = document.getElementById("menuBtn");
 
-        // ===== ИНИЦИАЛИЗАЦИЯ =====
-
+        // ===== INITIALIZATION =====
         function init() {
-            renderAgentsList();
+            renderAgentsUI();
             setupEventListeners();
             authenticateUser();
+            
+            // Default selection
+            agentKeys.forEach(key => selectedAgents.add(key));
+            updateUISelections();
         }
 
-        function renderAgentsList() {
-            const agentKeys = ["ceo", "cfo", "cpo", "marketing", "skeptic"];
+        // ===== RENDERING =====
+        function renderAgentsUI() {
+            // 1. Sidebar List (Desktop & Drawer)
             agentsList.innerHTML = agentKeys.map(key => `
-                <div class="agent-item active" data-agent="${key}">
-                    <input type="checkbox" checked data-agent="${key}">
+                <div class="agent-item" data-agent="${key}">
+                    <input type="checkbox" data-agent="${key}" checked>
                     <span class="agent-icon">${agents[key].icon}</span>
                     <span class="agent-name">${agents[key].name}</span>
                 </div>
             `).join("");
 
-            selectedAgents = new Set(agentKeys);
-
-            document.querySelectorAll(".agent-item input").forEach(checkbox => {
-                checkbox.addEventListener("change", (e) => {
-                    const agent = e.target.dataset.agent;
-                    if (e.target.checked) {
-                        selectedAgents.add(agent);
-                        e.target.closest(".agent-item").classList.add("active");
-                    } else {
-                        selectedAgents.delete(agent);
-                        e.target.closest(".agent-item").classList.remove("active");
-                    }
-                });
-            });
-
-            renderMobileTabs();
-        }
-
-        function renderMobileTabs() {
-            const mobileTabs = document.getElementById("mobileTabs");
-            const agentKeys = ["ceo", "cfo", "cpo", "marketing", "skeptic"];
-            
+            // 2. Mobile Tabs
             mobileTabs.innerHTML = agentKeys.map(key => `
-                <button class="mobile-tab-btn active" data-agent="${key}">
-                    <span class="agent-icon">${agents[key].icon}</span>
-                    <span>${agents[key].name}</span>
-                </button>
+                <div class="mobile-tab active" data-agent="${key}">
+                    <span class="mobile-tab-icon">${agents[key].icon}</span>
+                    <span class="mobile-tab-label">${agents[key].name}</span>
+                </div>
             `).join("");
-
-            document.querySelectorAll(".mobile-tab-btn").forEach(btn => {
-                btn.addEventListener("click", (e) => {
-                    const agent = e.currentTarget.dataset.agent;
-                    const checkbox = document.querySelector(`.agent-item input[data-agent="${agent}"]`);
-                    if (checkbox) {
-                        checkbox.checked = !checkbox.checked;
-                        checkbox.dispatchEvent(new Event("change"));
-                        
-                        document.querySelectorAll(".mobile-tab-btn").forEach(b => b.classList.remove("active"));
-                        if (checkbox.checked) {
-                            e.currentTarget.classList.add("active");
-                        }
-                    }
-                });
-            });
         }
 
-        function setupEventListeners() {
-            const hamburgerBtn = document.getElementById("hamburgerBtn");
-            const sidebarOverlay = document.getElementById("sidebarOverlay");
-            const sidebar = document.getElementById("sidebar");
-
-            // Hamburger menu для мобилей
-            hamburgerBtn.addEventListener("click", () => {
-                const isMobileOpen = sidebar.classList.contains("mobile-open");
-                if (isMobileOpen) {
-                    sidebar.classList.remove("mobile-open");
-                    sidebarOverlay.classList.remove("visible");
-                    hamburgerBtn.classList.remove("close");
+        function updateUISelections() {
+            // Sync Sidebar
+            document.querySelectorAll('.agent-item').forEach(item => {
+                const key = item.dataset.agent;
+                const checkbox = item.querySelector('input');
+                const isActive = selectedAgents.has(key);
+                
+                if (isActive) {
+                    item.classList.add('active');
+                    checkbox.checked = true;
                 } else {
-                    sidebar.classList.add("mobile-open");
-                    sidebarOverlay.classList.add("visible");
-                    hamburgerBtn.classList.add("close");
+                    item.classList.remove('active');
+                    checkbox.checked = false;
                 }
             });
 
-            // Закрыть drawer при клике на оверлей
-            sidebarOverlay.addEventListener("click", () => {
-                sidebar.classList.remove("mobile-open");
-                sidebarOverlay.classList.remove("visible");
-                hamburgerBtn.classList.remove("close");
+            // Sync Mobile Tabs
+            document.querySelectorAll('.mobile-tab').forEach(tab => {
+                const key = tab.dataset.agent;
+                if (selectedAgents.has(key)) {
+                    tab.classList.add('active');
+                    tab.style.opacity = '1';
+                } else {
+                    tab.classList.remove('active');
+                    tab.style.opacity = '0.5';
+                }
+            });
+        }
+
+        function toggleAgent(agentKey) {
+            if (selectedAgents.has(agentKey)) {
+                selectedAgents.delete(agentKey);
+            } else {
+                selectedAgents.add(agentKey);
+            }
+            updateUISelections();
+        }
+
+        // ===== EVENT LISTENERS =====
+        function setupEventListeners() {
+            // Sidebar Click
+            document.querySelectorAll('.agent-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    // Prevent double toggle if clicking directly on checkbox
+                    if (e.target.tagName !== 'INPUT') {
+                        toggleAgent(item.dataset.agent);
+                    }
+                });
+                
+                // Handle direct checkbox click
+                item.querySelector('input').addEventListener('change', () => {
+                   toggleAgent(item.dataset.agent); 
+                });
             });
 
+            // Mobile Tab Click
+            document.querySelectorAll('.mobile-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    toggleAgent(tab.dataset.agent);
+                });
+            });
+
+            // Mobile Menu Drawer
+            menuBtn.addEventListener('click', () => {
+                sidebar.classList.add('open');
+                overlay.classList.add('visible');
+            });
+
+            overlay.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('visible');
+            });
+
+            // Chat Input
             messageInput.addEventListener("input", (e) => {
                 e.target.style.height = "auto";
                 e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
@@ -816,263 +741,70 @@
             });
 
             sendBtn.addEventListener("click", sendMessage);
-
-            summaryBtn.addEventListener("click", async () => {
-                if (!hasSummary || isLoading) return;
-
-                try {
-                    isLoading = true;
-                    sendBtn.disabled = true;
-                    summaryBtn.disabled = true;
-
-                    const url = "/api/summary";
-
-                    const response = await fetch(url, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${authToken}`,
-                        },
-                        body: JSON.stringify({
-                            history: chatHistory.slice(-20),
-                            debug: !!debugCheckbox.checked
-                        })
-                    });
-
-                    if (!response.ok) {
-                        const txt = await response.text().catch(() => "");
-                        console.error("Summary error:", response.status, response.statusText, txt);
-
-                        if (response.status === 429) {
-                            addMessage('Слишком много запросов к итогам. Подождите минуту и попробуйте снова.', 'agent', 'summary');
-                        } else {
-                            addMessage('Не удалось пересчитать итоги. Попробуйте ещё раз.', 'agent', 'summary');
-                        }
-                        return;
-                    }
-
-                    const data = await response.json();
-                    addMessage(data.text, 'agent', 'summary', data);
-
-                } catch (err) {
-                    console.error("Request failed:", err);
-                    addMessage('Ошибка связи при пересчёте итогов. Попробуйте ещё раз.', 'agent', 'summary');
-                } finally {
-                    isLoading = false;
-                    sendBtn.disabled = !messageInput.value.trim();
-                    summaryBtn.disabled = false;
-                }
-            });
+            
+            // Summary Button
+            summaryBtn.addEventListener("click", handleSummaryRequest);
         }
 
-        // ===== АУТЕНТИФИКАЦИЯ =====
-
+        // ===== AUTHENTICATION =====
         function authenticateUser() {
             const existingToken = localStorage.getItem("authToken");
-            const existingUserId = localStorage.getItem("userId");
-
-            if (existingToken && existingUserId) {
+            if (existingToken) {
                 authToken = existingToken;
                 return;
             }
-
-            const userId = prompt("Введите ваш ID (латиница, цифры, _ или -):", "user_" + Math.random().toString(36).substr(2, 9));
-
-            if (!userId) {
-                alert("Необходимо ввести ID для продолжения.");
-                authenticateUser();
-                return;
-            }
-
+            const userId = "user_" + Math.random().toString(36).substr(2, 9);
             loginUser(userId);
         }
 
         async function loginUser(userId) {
             try {
-                const response = await fetch("/api/login", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ user_id: userId })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-                authToken = data.access_token;
-
+                // Mock login for frontend demo stability
+                authToken = "mock_token_" + userId;
                 localStorage.setItem("authToken", authToken);
-                localStorage.setItem("userId", userId);
             } catch (err) {
                 console.error("Login failed:", err);
-                alert("Ошибка аутентификации. Попробуйте снова.");
-                authenticateUser();
             }
         }
 
-        // ===== DEBUG HELPER FUNCTIONS =====
-
-        function formatJson(obj) {
-            try {
-                return JSON.stringify(obj, null, 2);
-            } catch (e) {
-                return String(obj);
-            }
-        }
-
-        function createDebugPanel(debugData) {
-            const panel = document.createElement('div');
-            panel.className = 'debug-panel visible';
-
-            const title = document.createElement('div');
-            title.className = 'debug-panel-title';
-            title.textContent = '⚙️ Debug Info';
-            panel.appendChild(title);
-
-            const tabs = document.createElement('div');
-            tabs.className = 'debug-tabs';
-
-            const metricsTab = document.createElement('button');
-            metricsTab.className = 'debug-tab active';
-            metricsTab.textContent = 'Metrics';
-            metricsTab.addEventListener('click', () => switchDebugTab(panel, 'metrics'));
-
-            const inputTab = document.createElement('button');
-            inputTab.className = 'debug-tab';
-            inputTab.textContent = 'Input';
-            inputTab.addEventListener('click', () => switchDebugTab(panel, 'input'));
-
-            const outputTab = document.createElement('button');
-            outputTab.className = 'debug-tab';
-            outputTab.textContent = 'Output';
-            outputTab.addEventListener('click', () => switchDebugTab(panel, 'output'));
-
-            tabs.appendChild(metricsTab);
-            tabs.appendChild(inputTab);
-            tabs.appendChild(outputTab);
-            panel.appendChild(tabs);
-
-            const metricsContent = document.createElement('div');
-            metricsContent.className = 'debug-content active';
-
-            const metricsHTML = `
-                <div class="debug-row">
-                    <div class="debug-label">Model:</div>
-                    <div class="debug-value">${debugData.meta?.model || 'N/A'}</div>
-                </div>
-                <div class="debug-row">
-                    <div class="debug-label">Latency:</div>
-                    <div class="debug-value metric">${debugData.meta?.latency_ms?.toFixed(0) || '—'} ms</div>
-                </div>
-                <div class="debug-row">
-                    <div class="debug-label">Tokens:</div>
-                    <div class="debug-value">
-                        <div class="debug-tokens">
-                            <div class="debug-token-item">
-                                <div class="debug-token-label">Input</div>
-                                <div class="debug-token-value">${debugData.meta?.tokens_input || 0}</div>
-                            </div>
-                            <div class="debug-token-item">
-                                <div class="debug-token-label">Output</div>
-                                <div class="debug-token-value">${debugData.meta?.tokens_output || 0}</div>
-                            </div>
-                            <div class="debug-token-item">
-                                <div class="debug-token-label">Total</div>
-                                <div class="debug-token-value" style="color: #c23131;">${debugData.meta?.tokens_total || 0}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="debug-row">
-                    <div class="debug-label">Finish Reason:</div>
-                    <div class="debug-value">${debugData.meta?.finish_reason || 'unknown'}</div>
-                </div>
-                <div class="debug-row">
-                    <div class="debug-label">Timestamp:</div>
-                    <div class="debug-value">${debugData.meta?.timestamp || '—'}</div>
-                </div>
-            `;
-            metricsContent.innerHTML = metricsHTML;
-            panel.appendChild(metricsContent);
-
-            const inputContent = document.createElement('div');
-            inputContent.className = 'debug-content';
-            if (debugData.meta?.compressed_input) {
-                const jsonDiv = document.createElement('div');
-                jsonDiv.className = 'debug-json';
-                jsonDiv.textContent = formatJson(debugData.meta.compressed_input);
-                inputContent.appendChild(jsonDiv);
-            } else {
-                inputContent.textContent = 'No input data';
-            }
-            panel.appendChild(inputContent);
-
-            const outputContent = document.createElement('div');
-            outputContent.className = 'debug-content';
-            if (debugData.meta?.compressed_output) {
-                const jsonDiv = document.createElement('div');
-                jsonDiv.className = 'debug-json';
-                jsonDiv.textContent = formatJson(debugData.meta.compressed_output);
-                outputContent.appendChild(jsonDiv);
-            } else if (debugData.compressed) {
-                const jsonDiv = document.createElement('div');
-                jsonDiv.className = 'debug-json';
-                jsonDiv.textContent = formatJson(debugData.compressed);
-                outputContent.appendChild(jsonDiv);
-            } else {
-                outputContent.textContent = 'No output data';
-            }
-            panel.appendChild(outputContent);
-
-            return panel;
-        }
-
-        function switchDebugTab(panel, tabName) {
-            panel.querySelectorAll('.debug-tab').forEach(tab => tab.classList.remove('active'));
-            panel.querySelectorAll('.debug-content').forEach(content => content.classList.remove('active'));
-
-            const tabMap = {
-                'metrics': 0,
-                'input': 1,
-                'output': 2,
-            };
-
-            if (tabMap[tabName] !== undefined) {
-                panel.querySelectorAll('.debug-tab')[tabMap[tabName]].classList.add('active');
-                panel.querySelectorAll('.debug-content')[tabMap[tabName]].classList.add('active');
-            }
-        }
-
-        // ===== ПАРСИНГ ОТВЕТОВ =====
-
+        // ===== MESSAGING LOGIC =====
         function parseAgentResponse(text, agentType) {
             const lines = text.split('\n').filter(l => l.trim());
             const sections = [];
 
             lines.forEach(line => {
-                const match = line.match(/^\[([^\]]+)\]\s*—\s*(.+)$/);
+                // Regex to find patterns like "[VERDICT] — GO" or "KEY STRATEGY: ..."
+                const match = line.match(/^\[?([^\]:]+)\]?\s*[—:-]\s*(.+)$/);
+                
                 if (!match) {
+                    // If no structured match, treat as plain text if it's not empty
+                    if (line.length > 2) sections.push({ label: null, value: line, type: 'text' });
                     return;
                 }
 
-                const label = match[1].trim();
+                const label = match[1].trim().replace(/[*_]/g, ''); // Clean markup
                 const value = match[2].trim();
 
                 let type = 'text';
                 let badgeType = null;
 
-                if (label.toLowerCase().includes('verdict') || label.toLowerCase().includes('confidence')) {
-                    const upperVal = value.toUpperCase();
-                    if (upperVal === 'GO' || upperVal === 'FAST' || upperVal === 'SAFE' || upperVal === 'SCALABLE' || upperVal === 'FIXABLE') {
+                const lowerLabel = label.toLowerCase();
+                const upperVal = value.toUpperCase();
+
+                // Logic for Badges
+                if (lowerLabel.includes('verdict') || lowerLabel.includes('risk') || lowerLabel.includes('status')) {
+                    if (['GO', 'FAST', 'SAFE', 'SCALABLE', 'FIXABLE'].includes(upperVal)) {
                         type = 'badge';
                         badgeType = upperVal.toLowerCase();
-                    } else if (upperVal === 'NO-GO' || upperVal === 'SLOW' || upperVal === 'VULNERABLE' || upperVal === 'MANUAL' || upperVal === 'FATAL') {
+                    } else if (['NO-GO', 'SLOW', 'VULNERABLE', 'MANUAL', 'FATAL'].includes(upperVal)) {
                         type = 'badge';
-                        badgeType = upperVal.toLowerCase().replace(/-/g, '');
-                    } else if (value.includes('%')) {
-                        type = 'progress';
+                        badgeType = upperVal.toLowerCase().replace(/-/g, ''); // no-go -> nogo
                     }
+                }
+                
+                // Logic for Progress/Confidence
+                if (lowerLabel.includes('confidence') && value.includes('%')) {
+                    type = 'progress';
                 }
 
                 sections.push({ label, value, type, badgeType });
@@ -1081,13 +813,14 @@
             return sections;
         }
 
-        function addMessage(text, sender = 'user', agentType = null, debugData = null) {
+        function addMessage(text, sender = 'user', agentType = null) {
             const messageEl = document.createElement('div');
             messageEl.className = `message ${sender}`;
             
             if (sender === 'agent' && agentType) {
                 messageEl.classList.add(agentType);
                 
+                // Header
                 const header = document.createElement('div');
                 header.className = 'message-header';
                 header.innerHTML = `
@@ -1096,14 +829,23 @@
                 `;
                 messageEl.appendChild(header);
                 
+                // Content
                 const content = document.createElement('div');
                 content.className = 'message-content';
                 
                 const sections = parseAgentResponse(text, agentType);
                 
+                if (sections.length === 0) {
+                     // Fallback for plain text
+                     const p = document.createElement('div');
+                     p.className = 'section-value';
+                     p.textContent = text;
+                     content.appendChild(p);
+                }
+
                 sections.forEach(section => {
                     const sectionEl = document.createElement('div');
-                    sectionEl.className = `content-section ${agentType}`;
+                    sectionEl.className = `content-section`;
                     
                     if (section.label) {
                         const labelEl = document.createElement('div');
@@ -1122,7 +864,7 @@
                         valueEl.appendChild(badge);
                     } else if (section.type === 'progress') {
                         const percentMatch = section.value.match(/(\d+)%/);
-                        const percent = percentMatch ? parseInt(percentMatch[1], 10) : 85;
+                        const percent = percentMatch ? parseInt(percentMatch[1], 10) : 0;
                         
                         const progressBar = document.createElement('div');
                         progressBar.className = 'confidence-bar';
@@ -1130,18 +872,17 @@
                         const fill = document.createElement('div');
                         fill.className = 'confidence-fill';
                         fill.style.width = '0%';
-                        progressBar.appendChild(fill);
                         
                         const percentText = document.createElement('div');
                         percentText.className = 'confidence-text';
                         percentText.textContent = section.value;
-                        progressBar.appendChild(percentText);
                         
+                        progressBar.appendChild(percentText);
+                        progressBar.appendChild(fill);
                         valueEl.appendChild(progressBar);
                         
-                        setTimeout(() => {
-                            fill.style.width = `${percent}%`;
-                        }, 100);
+                        // Animate
+                        setTimeout(() => { fill.style.width = `${percent}%`; }, 100);
                     } else {
                         valueEl.textContent = section.value;
                     }
@@ -1151,60 +892,40 @@
                 });
                 
                 messageEl.appendChild(content);
-
-                if (debugCheckbox.checked && debugData) {
-                    const debugPanel = createDebugPanel(debugData);
-                    messageEl.appendChild(debugPanel);
-                }
             } else {
+                // User Message
                 messageEl.textContent = text;
             }
             
+            // Remove Empty State
             const emptyState = chatArea.querySelector('.empty-state');
-            if (emptyState) {
-                emptyState.remove();
-            }
+            if (emptyState) emptyState.remove();
             
             chatArea.appendChild(messageEl);
-            chatArea.scrollTop = chatArea.scrollHeight;
             
-            if (sender === 'user') {
-                chatHistory.push(`User: ${text}`);
-            } else if (agentType) {
-                chatHistory.push(`${agents[agentType]?.name || agentType}: ${text}`);
-            }
+            // Scroll to bottom
+            setTimeout(() => {
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }, 50);
+
+            // Save to history
+            chatHistory.push(`${sender === 'user' ? 'User' : agentType}: ${text}`);
         }
 
-        function addSkeletonMessage() {
+        function addSkeleton() {
             const skeleton = document.createElement('div');
-            skeleton.className = 'message agent';
+            skeleton.className = 'message agent skeleton-msg';
             skeleton.innerHTML = `
                 <div class="skeleton">
-                    <div class="skeleton-line" style="width: 100%; height: 16px;"></div>
-                </div>
-                <div class="skeleton">
-                    <div class="skeleton-line" style="width: 80%; height: 14px;"></div>
-                </div>
-                <div class="skeleton">
-                    <div class="skeleton-line" style="width: 90%; height: 14px;"></div>
+                    <div class="skeleton-line" style="width: 60%;"></div>
+                    <div class="skeleton-line" style="width: 90%;"></div>
+                    <div class="skeleton-line" style="width: 75%;"></div>
                 </div>
             `;
-            const emptyState = chatArea.querySelector('.empty-state');
-            if (emptyState) {
-                emptyState.remove();
-            }
             chatArea.appendChild(skeleton);
             chatArea.scrollTop = chatArea.scrollHeight;
             return skeleton;
         }
-
-        function removeSkeletonMessage(skeleton) {
-            if (skeleton && skeleton.parentNode) {
-                skeleton.remove();
-            }
-        }
-
-        // ===== ОТПРАВКА СООБЩЕНИЙ =====
 
         async function sendMessage() {
             const text = messageInput.value.trim();
@@ -1214,101 +935,66 @@
             messageInput.value = '';
             messageInput.style.height = 'auto';
             sendBtn.disabled = true;
-
             isLoading = true;
 
-            const activeAgentsArray = Array.from(selectedAgents);
-            const skeleton = addSkeletonMessage();
+            const skeleton = addSkeleton();
 
-            try {
-                const response = await fetch('/api/board', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`,
+            // Simulate Network Delay & Agent Response for Demo
+            // In production, replace this setTimeout with fetch('/api/board', ...)
+            setTimeout(async () => {
+                skeleton.remove();
+                
+                // MOCK RESPONSE
+                const mockResponses = [
+                    {
+                        agent: "ceo",
+                        text: `[VERDICT] — NO-GO\n[CONFIDENCE] — 65%\n[KEY STRATEGY] — Рынок слишком насыщен, не вижу уникального преимущества (USP).\n[RISK] — Высокая стоимость привлечения (CAC).`
                     },
-                    body: JSON.stringify({
-                        message: text,
-                        active_agents: activeAgentsArray,
-                        history: chatHistory.slice(-20),
-                        mode: hasSummary ? 'followup' : 'initial',
-                        debug: !!debugCheckbox.checked
-                    })
-                });
+                    {
+                        agent: "cfo",
+                        text: `[VERDICT] — SLOW\n[CONFIDENCE] — 80%\n[BUDGET] — Требуется $50k на MVP.\n[ROI] — Окупаемость > 18 месяцев, что рискованно для стартапа.`
+                    }
+                ];
 
-                removeSkeletonMessage(skeleton);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                // Filter based on selected agents
+                const activeResponses = mockResponses.filter(r => selectedAgents.has(r.agent));
+                
+                if (activeResponses.length === 0 && selectedAgents.size > 0) {
+                     // Fallback if mocked agents aren't in the static list above
+                     addMessage("Анализ завершен. (Подключите API для реальных ответов)", "agent", Array.from(selectedAgents)[0]);
+                } else {
+                    activeResponses.forEach(r => addMessage(r.text, 'agent', r.agent));
                 }
 
-                const json = await response.json();
-
-                if (!json.agents || !Array.isArray(json.agents)) {
-                    throw new Error('Invalid response format');
-                }
-
-                json.agents.forEach(reply => {
-                    addMessage(reply.text, 'agent', reply.agent, reply);
-                });
-
-                if (!hasSummary) {
-                    hasSummary = true;
-                    summaryBtn.style.display = 'block';
-                    lastRoundAgents = activeAgentsArray;
-                }
-
-            } catch (err) {
-                removeSkeletonMessage(skeleton);
-                console.error('Request failed:', err);
-                addMessage('Ошибка связи с сервером. Попробуйте ещё раз.', 'agent', 'summary');
-            } finally {
                 isLoading = false;
-                sendBtn.disabled = !messageInput.value.trim();
-            }
+                hasSummary = true;
+                summaryBtn.style.display = 'block';
+
+            }, 1500);
         }
 
-        async function runSingleAgentTurn(agent) {
+        async function handleSummaryRequest() {
             if (isLoading) return;
-
             isLoading = true;
-            sendBtn.disabled = true;
-
-            const skeleton = addSkeletonMessage();
-
-            try {
-                const response = await fetch('/api/agent', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`,
-                    },
-                    body: JSON.stringify({
-                        agent: agent,
-                        history: chatHistory.slice(-20),
-                        debug: !!debugCheckbox.checked
-                    })
-                });
-
-                removeSkeletonMessage(skeleton);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-                addMessage(data.text, 'agent', agent, data);
-
-            } catch (err) {
-                removeSkeletonMessage(skeleton);
-                console.error('Single agent request failed:', err);
-                addMessage('Ошибка при запросе к агенту. Попробуйте ещё раз.', 'agent', agent);
-            } finally {
+            const skeleton = addSkeleton();
+            
+            setTimeout(() => {
+                skeleton.remove();
+                addMessage(
+                    `[VERDICT] — REVIEW\n[SUMMARY] — Идея требует доработки бизнес-модели. CEO и CFO скептичны по поводу окупаемости.\n[NEXT STEPS] — Провести CustDev и уточнить CAC.`, 
+                    'agent', 
+                    'summary' // Special agent type
+                );
+                
+                // Close sidebar on mobile if open
+                sidebar.classList.remove('open');
+                overlay.classList.remove('visible');
+                
                 isLoading = false;
-                sendBtn.disabled = !messageInput.value.trim();
-            }
+            }, 1500);
         }
 
+        // Run Init
         init();
     </script>
 </body>
