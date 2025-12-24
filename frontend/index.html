@@ -440,7 +440,7 @@
             width: 20px;
             height: 20px;
             fill: currentColor;
-            margin-left: 2px; /* Visual centering adjustment */
+            margin-left: 2px;
         }
 
         /* Debug & Summary buttons in Sidebar */
@@ -468,6 +468,7 @@
             font-size: 13px;
             margin-top: 10px;
             transition: opacity 0.2s;
+            display: none;
         }
         
         #summaryBtn:disabled {
@@ -497,12 +498,12 @@
             100% { background-position: -200% 0; }
         }
 
-        /* ===== RESPONSIVE STYLES (Mobile First Approach) ===== */
+        /* ===== RESPONSIVE STYLES ===== */
         @media (max-width: 768px) {
             body {
                 padding: 0;
                 align-items: flex-start;
-                background: #f0f2f5; /* Simpler bg for mobile */
+                background: #f0f2f5;
             }
 
             .container {
@@ -515,26 +516,15 @@
                 display: flex;
             }
 
-            .sidebar.open {
-                transform: translateX(0);
-            }
-
-            .overlay.visible {
-                display: block;
-                opacity: 1;
-                pointer-events: auto;
-            }
-
             .chat-area {
-                padding-top: 120px; /* Space for Header + Tabs */
-                padding-bottom: 80px; /* Space for Input */
+                padding-top: 120px;
+                padding-bottom: 80px;
             }
 
             .message {
-                max-width: 95%; /* Wider messages on mobile */
+                max-width: 95%;
             }
 
-            /* Adjust content layout for mobile */
             .content-section {
                 flex-direction: column;
                 align-items: flex-start;
@@ -566,13 +556,11 @@
         <div class="mobile-header">
             <button class="mobile-menu-btn" id="menuBtn">☰</button>
             <div class="mobile-title">Board.AI</div>
-            <div style="width: 24px;"></div> <!-- Spacer -->
+            <div style="width: 24px;"></div>
         </div>
 
-        <!-- Mobile Tabs (Agents) -->
-        <div class="mobile-tabs" id="mobileTabs">
-            <!-- Populated via JS -->
-        </div>
+        <!-- Mobile Tabs -->
+        <div class="mobile-tabs" id="mobileTabs"></div>
 
         <!-- Sidebar / Drawer -->
         <div class="overlay" id="overlay"></div>
@@ -653,7 +641,6 @@
 
         // ===== RENDERING =====
         function renderAgentsUI() {
-            // 1. Sidebar List (Desktop & Drawer)
             agentsList.innerHTML = agentKeys.map(key => `
                 <div class="agent-item" data-agent="${key}">
                     <input type="checkbox" data-agent="${key}" checked>
@@ -662,7 +649,6 @@
                 </div>
             `).join("");
 
-            // 2. Mobile Tabs
             mobileTabs.innerHTML = agentKeys.map(key => `
                 <div class="mobile-tab active" data-agent="${key}">
                     <span class="mobile-tab-icon">${agents[key].icon}</span>
@@ -672,7 +658,6 @@
         }
 
         function updateUISelections() {
-            // Sync Sidebar
             document.querySelectorAll('.agent-item').forEach(item => {
                 const key = item.dataset.agent;
                 const checkbox = item.querySelector('input');
@@ -687,7 +672,6 @@
                 }
             });
 
-            // Sync Mobile Tabs
             document.querySelectorAll('.mobile-tab').forEach(tab => {
                 const key = tab.dataset.agent;
                 if (selectedAgents.has(key)) {
@@ -711,29 +695,24 @@
 
         // ===== EVENT LISTENERS =====
         function setupEventListeners() {
-            // Sidebar Click
             document.querySelectorAll('.agent-item').forEach(item => {
                 item.addEventListener('click', (e) => {
-                    // Prevent double toggle if clicking directly on checkbox
                     if (e.target.tagName !== 'INPUT') {
                         toggleAgent(item.dataset.agent);
                     }
                 });
                 
-                // Handle direct checkbox click
                 item.querySelector('input').addEventListener('change', () => {
                    toggleAgent(item.dataset.agent); 
                 });
             });
 
-            // Mobile Tab Click
             document.querySelectorAll('.mobile-tab').forEach(tab => {
                 tab.addEventListener('click', () => {
                     toggleAgent(tab.dataset.agent);
                 });
             });
 
-            // Mobile Menu Drawer
             menuBtn.addEventListener('click', () => {
                 sidebar.classList.add('open');
                 overlay.classList.add('visible');
@@ -744,7 +723,6 @@
                 overlay.classList.remove('visible');
             });
 
-            // Chat Input
             messageInput.addEventListener("input", (e) => {
                 e.target.style.height = "auto";
                 e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
@@ -759,8 +737,6 @@
             });
 
             sendBtn.addEventListener("click", sendMessage);
-            
-            // Summary Button
             summaryBtn.addEventListener("click", handleSummaryRequest);
         }
 
@@ -777,7 +753,6 @@
 
         async function loginUser(userId) {
             try {
-                // Mock login for frontend demo stability
                 authToken = "mock_token_" + userId;
                 localStorage.setItem("authToken", authToken);
             } catch (err) {
@@ -791,16 +766,14 @@
             const sections = [];
 
             lines.forEach(line => {
-                // Regex to find patterns like "[VERDICT] — GO" or "KEY STRATEGY: ..."
                 const match = line.match(/^\[?([^\]:]+)\]?\s*[—:-]\s*(.+)$/);
                 
                 if (!match) {
-                    // If no structured match, treat as plain text if it's not empty
                     if (line.length > 2) sections.push({ label: null, value: line, type: 'text' });
                     return;
                 }
 
-                const label = match[1].trim().replace(/[*_]/g, ''); // Clean markup
+                const label = match[1].trim().replace(/[*_]/g, '');
                 const value = match[2].trim();
 
                 let type = 'text';
@@ -809,18 +782,16 @@
                 const lowerLabel = label.toLowerCase();
                 const upperVal = value.toUpperCase();
 
-                // Logic for Badges
                 if (lowerLabel.includes('verdict') || lowerLabel.includes('risk') || lowerLabel.includes('status')) {
                     if (['GO', 'FAST', 'SAFE', 'SCALABLE', 'FIXABLE'].includes(upperVal)) {
                         type = 'badge';
                         badgeType = upperVal.toLowerCase();
                     } else if (['NO-GO', 'SLOW', 'VULNERABLE', 'MANUAL', 'FATAL'].includes(upperVal)) {
                         type = 'badge';
-                        badgeType = upperVal.toLowerCase().replace(/-/g, ''); // no-go -> nogo
+                        badgeType = upperVal.toLowerCase().replace(/-/g, '');
                     }
                 }
                 
-                // Logic for Progress/Confidence
                 if (lowerLabel.includes('confidence') && value.includes('%')) {
                     type = 'progress';
                 }
@@ -838,7 +809,6 @@
             if (sender === 'agent' && agentType) {
                 messageEl.classList.add(agentType);
                 
-                // Header
                 const header = document.createElement('div');
                 header.className = 'message-header';
                 header.innerHTML = `
@@ -847,14 +817,12 @@
                 `;
                 messageEl.appendChild(header);
                 
-                // Content
                 const content = document.createElement('div');
                 content.className = 'message-content';
                 
                 const sections = parseAgentResponse(text, agentType);
                 
                 if (sections.length === 0) {
-                     // Fallback for plain text
                      const p = document.createElement('div');
                      p.className = 'section-value';
                      p.textContent = text;
@@ -899,7 +867,6 @@
                         progressBar.appendChild(fill);
                         valueEl.appendChild(progressBar);
                         
-                        // Animate
                         setTimeout(() => { fill.style.width = `${percent}%`; }, 100);
                     } else {
                         valueEl.textContent = section.value;
@@ -911,22 +878,18 @@
                 
                 messageEl.appendChild(content);
             } else {
-                // User Message
                 messageEl.textContent = text;
             }
             
-            // Remove Empty State
             const emptyState = chatArea.querySelector('.empty-state');
             if (emptyState) emptyState.remove();
             
             chatArea.appendChild(messageEl);
             
-            // Scroll to bottom
             setTimeout(() => {
                 chatArea.scrollTop = chatArea.scrollHeight;
             }, 50);
 
-            // Save to history
             chatHistory.push(`${sender === 'user' ? 'User' : agentType}: ${text}`);
         }
 
@@ -957,38 +920,68 @@
 
             const skeleton = addSkeleton();
 
-            // Simulate Network Delay & Agent Response for Demo
-            // In production, replace this setTimeout with fetch('/api/board', ...)
-            setTimeout(async () => {
+            try {
                 skeleton.remove();
                 
-                // MOCK RESPONSE
-                const mockResponses = [
-                    {
-                        agent: "ceo",
-                        text: `[VERDICT] — NO-GO\n[CONFIDENCE] — 65%\n[KEY STRATEGY] — Рынок слишком насыщен, не вижу уникального преимущества (USP).\n[RISK] — Высокая стоимость привлечения (CAC).`
-                    },
-                    {
-                        agent: "cfo",
-                        text: `[VERDICT] — SLOW\n[CONFIDENCE] — 80%\n[BUDGET] — Требуется $50k на MVP.\n[ROI] — Окупаемость > 18 месяцев, что рискованно для стартапа.`
-                    }
-                ];
-
-                // Filter based on selected agents
-                const activeResponses = mockResponses.filter(r => selectedAgents.has(r.agent));
-                
-                if (activeResponses.length === 0 && selectedAgents.size > 0) {
-                     // Fallback if mocked agents aren't in the static list above
-                     addMessage("Анализ завершен. (Подключите API для реальных ответов)", "agent", Array.from(selectedAgents)[0]);
-                } else {
-                    activeResponses.forEach(r => addMessage(r.text, 'agent', r.agent));
+                // ✅ ПРОВЕРКА: есть ли выбранные агенты
+                if (selectedAgents.size === 0) {
+                    addMessage("❌ Пожалуйста, выберите хотя бы одного агента", "agent", "system");
+                    isLoading = false;
+                    return;
                 }
 
+                // ✅ ВЫЗОВ: параллельно для каждого выбранного агента
+                const agentPromises = Array.from(selectedAgents).map(agentKey =>
+                    fetch('/api/board', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({
+                            agent: agentKey,
+                            message: text,
+                            chatHistory: chatHistory
+                        })
+                    })
+                    .then(res => {
+                        // ✅ ОБРАБОТКА: проверка статуса ответа
+                        if (!res.ok) throw new Error(`API ошибка ${res.status}`);
+                        return res.json();
+                    })
+                    .then(data => ({
+                        agent: agentKey,
+                        text: data.response || data.text || "Ошибка анализа"
+                    }))
+                    .catch(err => {
+                        // ✅ ОШИБКИ: обработка для каждого агента
+                        console.error(`Ошибка для агента ${agentKey}:`, err);
+                        return {
+                            agent: agentKey,
+                            text: `[ERROR] — Ошибка подключения\n[MESSAGE] — ${err.message}`
+                        };
+                    })
+                );
+
+                // ✅ СИНХРОНИЗАЦИЯ: ждём ВСЕ ответы
+                const responses = await Promise.all(agentPromises);
+                
+                // ✅ ВЫВОД: добавляем все сообщения в чат
+                responses.forEach(r => {
+                    addMessage(r.text, 'agent', r.agent);
+                });
+
+                // ✅ ЗАВЕРШЕНИЕ: разрешаем summary
                 isLoading = false;
                 hasSummary = true;
                 summaryBtn.style.display = 'block';
 
-            }, 1500);
+            } catch (err) {
+                console.error("Критическая ошибка:", err);
+                skeleton.remove();
+                addMessage(`❌ Критическая ошибка: ${err.message}`, 'agent', 'system');
+                isLoading = false;
+            }
         }
 
         async function handleSummaryRequest() {
@@ -996,23 +989,43 @@
             isLoading = true;
             const skeleton = addSkeleton();
             
-            setTimeout(() => {
+            try {
+                // ✅ SUMMARY: вызов API для подведения итогов
+                const summaryResponse = await fetch('/api/board/summary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        agents: Array.from(selectedAgents),
+                        chatHistory: chatHistory
+                    })
+                });
+
+                if (!summaryResponse.ok) throw new Error(`Summary API ошибка ${summaryResponse.status}`);
+                
+                const summaryData = await summaryResponse.json();
                 skeleton.remove();
+                
                 addMessage(
-                    `[VERDICT] — REVIEW\n[SUMMARY] — Идея требует доработки бизнес-модели. CEO и CFO скептичны по поводу окупаемости.\n[NEXT STEPS] — Провести CustDev и уточнить CAC.`, 
-                    'agent', 
-                    'summary' // Special agent type
+                    summaryData.response || summaryData.text || "[VERDICT] — PROCESSING\n[SUMMARY] — Анализ завершён",
+                    'agent',
+                    'summary'
                 );
                 
-                // Close sidebar on mobile if open
                 sidebar.classList.remove('open');
                 overlay.classList.remove('visible');
                 
                 isLoading = false;
-            }, 1500);
+            } catch (err) {
+                console.error("Summary ошибка:", err);
+                skeleton.remove();
+                addMessage(`❌ Ошибка summary: ${err.message}`, 'agent', 'system');
+                isLoading = false;
+            }
         }
 
-        // Run Init
         init();
     </script>
 </body>
