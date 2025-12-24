@@ -3,54 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Совет директоров</title>
+    <title>Board.AI — Совет директоров на GigaChat</title>
     <style>
-        :root {
-            --color-primary: #208090;
-            --color-secondary: #f5f5f5;
-            --color-text: #1f2121;
-            --color-border: #ddd;
-            --color-ceo: #1e3a5f;
-            --color-cfo: #2d5a3d;
-            --color-cpo: #5a3d2d;
-            --color-marketing: #3d2d5a;
-            --color-skeptic: #8b4513;
-            --color-summary: #555555;
-            
-            /* Status colors */
-            --color-success: #22c55e;
-            --color-danger: #ef4444;
-            --color-warning: #f59e0b;
-            --color-info: #3b82f6;
-        }
-        
-        html, body {
-            height: 100%;
-        }
-        
         * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
 
         body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f9f9f9;
-            color: var(--color-text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
         }
 
         .container {
             display: flex;
-            min-height: calc(var(--vh, 1vh) * 100);
-            height: calc(var(--vh, 1vh) * 100);
-            gap: 0;
+            width: 100%;
+            max-width: 1200px;
+            height: 85vh;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
         }
 
         .sidebar {
             width: 280px;
-            background: white;
-            border-right: 1px solid var(--color-border);
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
             padding: 20px;
             overflow-y: auto;
             display: flex;
@@ -58,1104 +43,1084 @@
             gap: 16px;
         }
 
-        .sidebar-title {
-            font-size: 14px;
-            font-weight: 600;
+        .agents-section h3 {
+            font-size: 12px;
+            font-weight: 700;
             text-transform: uppercase;
             color: #666;
-            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
         }
 
-        .agent-card {
-            padding: 12px;
+        .agent-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
             border-radius: 8px;
-            border-left: 4px solid;
             cursor: pointer;
             transition: all 200ms;
-            font-size: 13px;
-        }
-
-        .agent-card:hover {
-            transform: translateX(4px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .agent-card.ceo {
-            border-left-color: var(--color-ceo);
-            background: rgba(30, 58, 95, 0.08);
-        }
-
-        .agent-card.cfo {
-            border-left-color: var(--color-cfo);
-            background: rgba(45, 90, 61, 0.08);
-        }
-
-        .agent-card.cpo {
-            border-left-color: var(--color-cpo);
-            background: rgba(90, 61, 45, 0.08);
-        }
-
-        .agent-card.marketing {
-            border-left-color: var(--color-marketing);
-            background: rgba(61, 45, 90, 0.08);
-        }
-
-        .agent-card.skeptic {
-            border-left-color: var(--color-skeptic);
-            background: rgba(139, 69, 19, 0.08);
-        }
-
-        .agent-card.disabled {
-            opacity: 0.6;
-        }
-
-        .agent-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .agent-status {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
-
-        .agent-status.on {
-            background: #22c55e;
-        }
-
-        .agent-status.off {
-            background: #9ca3af;
-        }
-
-        .agent-name {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .agent-role {
-            font-size: 12px;
-            color: #666;
-        }
-
-        .main-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
             background: white;
+            border: 1px solid #e9ecef;
         }
 
-        .header {
-            padding: 16px 24px;
-            border-bottom: 1px solid var(--color-border);
-            background: white;
+        .agent-item:hover {
+            background: #f0f2f5;
+            border-color: #dee2e6;
         }
 
-        .header-title {
-            font-size: 20px;
-            font-weight: 600;
-            margin: 0;
-        }
-
-        .chat-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .message {
-            padding: 16px;
-            border-radius: 12px;
-            max-width: clamp(280px, 80%, 700px);
-            word-wrap: break-word;
-            animation: slideIn 300ms ease-out;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .message.user {
-            align-self: flex-end;
-            background: var(--color-primary);
+        .agent-item.active {
+            background: #667eea;
             color: white;
-            margin-right: 0;
+            border-color: #667eea;
         }
 
-        .message.agent {
-            align-self: flex-start;
-            background: white;
-            border: 1px solid var(--color-border);
-            position: relative;
-        }
-
-        /* Заголовок агента с иконкой */
-        .message-header {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid;
-        }
-
-        .agent-icon {
-            font-size: 18px;
-            line-height: 1;
-        }
-
-        .message.agent.ceo .message-header { 
-            color: var(--color-ceo); 
-            border-bottom-color: var(--color-ceo);
-        }
-        .message.agent.cfo .message-header { 
-            color: var(--color-cfo); 
-            border-bottom-color: var(--color-cfo);
-        }
-        .message.agent.cpo .message-header { 
-            color: var(--color-cpo); 
-            border-bottom-color: var(--color-cpo);
-        }
-        .message.agent.marketing .message-header { 
-            color: var(--color-marketing); 
-            border-bottom-color: var(--color-marketing);
-        }
-        .message.agent.skeptic .message-header { 
-            color: var(--color-skeptic); 
-            border-bottom-color: var(--color-skeptic);
-        }
-        .message.agent.summary .message-header { 
-            color: var(--color-summary); 
-            border-bottom-color: var(--color-summary);
-        }
-
-        /* Структурированный контент */
-        .message-content {
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .content-section {
-            margin-bottom: 12px;
-            padding: 8px 12px;
-            background: rgba(0,0,0,0.02);
-            border-radius: 6px;
-            border-left: 3px solid;
-        }
-
-        .content-section.ceo { border-left-color: var(--color-ceo); }
-        .content-section.cfo { border-left-color: var(--color-cfo); }
-        .content-section.cpo { border-left-color: var(--color-cpo); }
-        .content-section.marketing { border-left-color: var(--color-marketing); }
-        .content-section.skeptic { border-left-color: var(--color-skeptic); }
-        .content-section.summary { border-left-color: var(--color-summary); }
-
-        .section-label {
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-            color: #666;
-            margin-bottom: 6px;
-            letter-spacing: 0.5px;
-        }
-
-        .section-value {
-            font-size: 14px;
-            color: var(--color-text);
-            line-height: 1.5;
-        }
-
-        /* Бейджи для вердиктов */
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .badge.success {
-            background: rgba(34, 197, 94, 0.15);
-            color: #16a34a;
-        }
-
-        .badge.danger {
-            background: rgba(239, 68, 68, 0.15);
-            color: #dc2626;
-        }
-
-        .badge.warning {
-            background: rgba(245, 158, 11, 0.15);
-            color: #d97706;
-        }
-
-        .badge.info {
-            background: rgba(59, 130, 246, 0.15);
-            color: #2563eb;
-        }
-
-        /* Прогресс-бар для Confidence */
-        .confidence-bar {
-            width: 100%;
-            height: 8px;
-            background: #e5e7eb;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 6px;
-        }
-
-        .confidence-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--color-success), var(--color-info));
-            border-radius: 4px;
-            transition: width 600ms ease-out;
-        }
-
-        .confidence-text {
-            font-size: 13px;
-            font-weight: 600;
-            color: #374151;
-            margin-top: 4px;
-        }
-
-        /* Skeleton loader для агентов */
-        .skeleton-message {
-            align-self: flex-start;
-            max-width: clamp(280px, 80%, 700px);
-            padding: 16px;
-            border-radius: 12px;
-            background: white;
-            border: 1px solid var(--color-border);
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        .skeleton-header {
-            width: 120px;
-            height: 20px;
-            background: #e5e7eb;
-            border-radius: 4px;
-            margin-bottom: 12px;
-        }
-
-        .skeleton-line {
-            height: 12px;
-            background: #e5e7eb;
-            border-radius: 4px;
-            margin-bottom: 8px;
-        }
-
-        .skeleton-line.short {
-            width: 60%;
-        }
-
-        .skeleton-line.medium {
-            width: 80%;
-        }
-
-        .skeleton-line.long {
-            width: 100%;
-        }
-
-        .input-area {
-            padding: 20px 24px;
-            border-top: 1px solid var(--color-border);
-            display: flex;
-            gap: 12px;
-            background: white;
-            flex-shrink: 0;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .summary-btn {
-            padding: 12px 16px;
-            background: #e5e7eb;
-            color: #374151;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            white-space: nowrap;
-            flex-shrink: 0;
-            margin-right: 8px;
-            transition: all 200ms;
-        }
-
-        .summary-btn:hover {
-            background: #d1d5db;
-            transform: translateY(-1px);
-        }
-
-        .debug-label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: #666;
-            margin-right: 8px;
-            flex-shrink: 0;
-        }
-
-        .debug-label input[type="checkbox"] {
+        .agent-item input[type="checkbox"] {
             cursor: pointer;
             width: 16px;
             height: 16px;
         }
 
-        .input-field {
+        .agent-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .agent-name {
+            font-size: 13px;
+            font-weight: 500;
             flex: 1;
-            min-width: 200px;
+        }
+
+        .debug-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            cursor: pointer;
+        }
+
+        .debug-toggle input[type="checkbox"] {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .debug-toggle label {
+            font-size: 13px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #ffffff;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #999;
+            text-align: center;
+        }
+
+        .empty-state h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            max-width: 300px;
+            line-height: 1.5;
+        }
+
+        .message {
+            margin-bottom: 16px;
             padding: 12px 16px;
-            border: 1px solid var(--color-border);
-            border-radius: 6px;
+            border-radius: 8px;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .message.user {
+            background: #e7f3ff;
+            color: #0c5aa0;
+            margin-left: 40px;
+            text-align: left;
+        }
+
+        .message.agent {
+            background: #f5f5f5;
+            color: #333;
+            margin-right: 40px;
+            border-left: 4px solid #667eea;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: #667eea;
+        }
+
+        .agent-icon {
+            font-size: 16px;
+        }
+
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .content-section {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .section-label {
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #667eea;
+            min-width: 100px;
+            padding-top: 2px;
+        }
+
+        .section-value {
+            flex: 1;
+            color: #333;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge.go {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge.no-go {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge.fast {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge.slow {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge.safe {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge.vulnerable {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge.scalable {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge.manual {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge.fixable {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge.fatal {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 600ms ease-out;
+        }
+
+        .confidence-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+        }
+
+        .input-area {
+            padding: 16px;
+            border-top: 1px solid #e9ecef;
+            background: #f8f9fa;
+            display: flex;
+            gap: 8px;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
             font-size: 14px;
             font-family: inherit;
             resize: none;
             max-height: 100px;
         }
 
-        .input-field:focus {
+        #messageInput:focus {
             outline: none;
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 3px rgba(32, 128, 144, 0.1);
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
         }
 
-        .send-btn {
+        #sendBtn {
             padding: 12px 24px;
-            background: var(--color-primary);
+            background: #667eea;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 14px;
             transition: all 200ms;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            flex-shrink: 0;
         }
 
-        .send-btn:hover:not(:disabled) {
-            background: #1a6472;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(32, 128, 144, 0.3);
+        #sendBtn:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
 
-        .send-btn:disabled {
-            opacity: 0.5;
+        #sendBtn:disabled {
+            background: #ccc;
             cursor: not-allowed;
+            opacity: 0.5;
         }
 
-        .loading {
+        #summaryBtn {
+            padding: 12px 24px;
+            background: #764ba2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            display: none;
+            transition: all 200ms;
+        }
+
+        #summaryBtn:hover:not(:disabled) {
+            background: #653a85;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(118, 75, 162, 0.4);
+        }
+
+        #summaryBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .skeleton {
             display: flex;
-            align-items: center;
             gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .skeleton-line {
+            height: 12px;
+            background: linear-gradient(90deg, #e9ecef 25%, #f0f2f5 50%, #e9ecef 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ===== DEBUG PANEL ===== */
+        .debug-panel {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 12px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            display: none;
+        }
+
+        .debug-panel.visible {
+            display: block;
+        }
+
+        .debug-panel-title {
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
             color: #666;
-            font-size: 13px;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
         }
 
-        .spinner {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border: 2px solid #ddd;
-            border-top-color: var(--color-primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .empty-state {
+        .debug-row {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: #999;
-            font-size: 16px;
-            text-align: center;
-            flex-direction: column;
             gap: 12px;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
         }
 
-        .empty-state-icon {
-            font-size: 48px;
-            opacity: 0.3;
+        .debug-row:last-child {
+            border-bottom: none;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-                height: calc(var(--vh, 1vh) * 100);
-                min-height: calc(var(--vh, 1vh) * 100);
-            }
+        .debug-label {
+            font-weight: 600;
+            color: #666;
+            min-width: 120px;
+        }
 
-            .sidebar {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                width: 100%;
-                display: flex;
-                flex-direction: row;
-                overflow-x: auto;
-                overflow-y: hidden;
-                padding: 12px;
-                gap: 8px;
-                border-right: none;
-                border-bottom: 1px solid var(--color-border);
-                background: #fff;
-                z-index: 10;
-            }
+        .debug-value {
+            color: #333;
+            word-break: break-all;
+            flex: 1;
+        }
 
-            .sidebar-title {
-                display: none;
-            }
+        .debug-value.metric {
+            color: #208090;
+            font-weight: 600;
+        }
 
-            .agent-card {
-                min-width: 120px;
-                flex-shrink: 0;
-            }
+        .debug-tokens {
+            display: flex;
+            gap: 16px;
+        }
 
-            .main-area {
-                margin-top: 72px;
-            }
+        .debug-token-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
 
-            .chat-area {
-                padding: 12px;
-            }
+        .debug-token-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #999;
+        }
 
-            .input-area {
-                padding: 12px;
-                flex-direction: column;
-            }
+        .debug-token-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #208090;
+        }
 
-            .message {
-                max-width: 100%;
-            }
+        .debug-json {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            margin-top: 8px;
+            max-height: 200px;
+            overflow: auto;
+            word-break: break-all;
+            font-size: 11px;
+        }
 
-            .input-field {
-                min-width: auto;
-                width: 100%;
-            }
+        .debug-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+        }
 
-            .send-btn {
-                width: 100%;
-            }
+        .debug-tab {
+            padding: 6px 12px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            transition: all 200ms;
+        }
 
-            .summary-btn {
-                width: 100%;
-                margin-right: 0;
-            }
+        .debug-tab:hover {
+            color: #208090;
+        }
 
-            .debug-label {
-                margin-right: 0;
-            }
+        .debug-tab.active {
+            color: #208090;
+            border-bottom-color: #208090;
+        }
+
+        .debug-content {
+            display: none;
+        }
+
+        .debug-content.active {
+            display: block;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Sidebar with agents -->
+        <!-- Sidebar -->
         <div class="sidebar">
-            <div class="sidebar-title">Совет директоров</div>
-            
-            <div class="agent-card ceo" data-agent="ceo">
-                <div class="agent-header">
-                    <span class="agent-status on"></span>
-                    <div>
-                        <div class="agent-name">CEO</div>
-                        <div class="agent-role">Стратегия и видение</div>
-                    </div>
-                </div>
+            <div class="agents-section">
+                <h3>Члены совета</h3>
+                <div id="agentsList"></div>
             </div>
 
-            <div class="agent-card cfo" data-agent="cfo">
-                <div class="agent-header">
-                    <span class="agent-status on"></span>
-                    <div>
-                        <div class="agent-name">CFO</div>
-                        <div class="agent-role">Финансы и риски</div>
-                    </div>
-                </div>
+            <div class="debug-toggle">
+                <input type="checkbox" id="debugCheckbox">
+                <label for="debugCheckbox">🔧 Debug режим</label>
             </div>
 
-            <div class="agent-card cpo" data-agent="cpo">
-                <div class="agent-header">
-                    <span class="agent-status on"></span>
-                    <div>
-                        <div class="agent-name">CPO</div>
-                        <div class="agent-role">Продукт и UX</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="agent-card marketing" data-agent="marketing">
-                <div class="agent-header">
-                    <span class="agent-status on"></span>
-                    <div>
-                        <div class="agent-name">Маркетинг</div>
-                        <div class="agent-role">Рынок и позиционирование</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="agent-card skeptic" data-agent="skeptic">
-                <div class="agent-header">
-                    <span class="agent-status on"></span>
-                    <div>
-                        <div class="agent-name">Скептик</div>
-                        <div class="agent-role">Риски и возражения</div>
-                    </div>
-                </div>
+            <div>
+                <button id="summaryBtn">📊 Пересчитать итоги</button>
             </div>
         </div>
 
-        <!-- Main chat area -->
-        <div class="main-area">
-            <div class="header">
-                <h1 class="header-title">Заседание совета</h1>
-            </div>
-
+        <!-- Main Chat -->
+        <div class="main">
             <div class="chat-area" id="chatArea">
                 <div class="empty-state">
-                    <div class="empty-state-icon">💼</div>
-                    <div>Начните обсуждение — опишите идею или вопрос для совета</div>
+                    <h2>🎯 Board.AI</h2>
+                    <p>Многоагентная платформа для анализа идей и бизнес-решений на базе GigaChat</p>
                 </div>
             </div>
 
             <div class="input-area">
-                <button class="summary-btn" id="summaryBtn" style="display: none;">
-                    Обновить итоги
-                </button>
-
-                <!-- ЧЕКБОКС ДЛЯ DEBUG -->
-                <label class="debug-label">
-                    <input type="checkbox" id="debugCheckbox" />
-                    <span>debug</span>
-                </label>
-
-                <textarea 
-                    class="input-field" 
-                    id="messageInput" 
-                    placeholder="Опишите идею, задачу или проблему для обсуждения..."
-                    rows="1"
-                ></textarea>
-                <button class="send-btn" id="sendBtn">Отправить</button>
+                <textarea id="messageInput" placeholder="Опишите вашу идею или вопрос..."></textarea>
+                <button id="sendBtn" disabled>Отправить</button>
             </div>
         </div>
     </div>
 
-<script>
-    // фикс 100vh на мобилках
-    function setVh() {
-        const vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-    }
-    setVh();
-    window.addEventListener('resize', setVh);
+    <script>
+        // ===== КОНФИГУРАЦИЯ =====
 
-    let authToken = null;
+        let authToken = null;
+        let selectedAgents = new Set();
+        let chatHistory = [];
+        let isLoading = false;
+        let hasSummary = false;
+        let lastRoundAgents = [];
 
-    function generateOrGetUserId() { 
-        try { 
-            // 1️⃣ Пробуем localStorage (идеально) 
-            let userId = localStorage.getItem("board_user_id"); 
-            if (!userId) { 
-                userId = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8); 
-                localStorage.setItem("board_user_id", userId); } 
-            return userId; 
-        } catch (e) { 
-            try { 
-                // 2️⃣ Если localStorage упал → sessionStorage (работает везде) 
-                let userId = sessionStorage.getItem("board_user_id"); 
-                if (!userId) { 
-                    userId = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8); 
-                    sessionStorage.setItem("board_user_id", userId); 
-                } 
-                return userId; 
-            } catch (e2) { 
-                // 3️⃣ Если и sessionStorage упал → используем память браузера 
-                if (!window.fallbackUserId) { 
-                    window.fallbackUserId = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8); 
-                } 
-                return window.fallbackUserId; 
-            } 
-        } 
-    }
+        const agents = {
+            "ceo": { name: "CEO", icon: "👔", color: "#667eea" },
+            "cfo": { name: "CFO", icon: "💰", color: "#764ba2" },
+            "cpo": { name: "CPO", icon: "🎯", color: "#f093fb" },
+            "marketing": { name: "Marketing", icon: "📢", color: "#4facfe" },
+            "skeptic": { name: "Skeptic", icon: "⚠️", color: "#fa709a" },
+            "summary": { name: "Модератор", icon: "📊", color: "#30b0c0" },
+        };
 
-    async function initAuth() {
-        const userId = generateOrGetUserId();
+        const chatArea = document.getElementById("chatArea");
+        const messageInput = document.getElementById("messageInput");
+        const sendBtn = document.getElementById("sendBtn");
+        const summaryBtn = document.getElementById("summaryBtn");
+        const debugCheckbox = document.getElementById("debugCheckbox");
+        const agentsList = document.getElementById("agentsList");
 
-        try {
-            const response = await fetch("/api/login", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ user_id: userId }),
-            });
+        // ===== ИНИЦИАЛИЗАЦИЯ =====
 
-            if (!response.ok) {
-                console.error("Auth failed:", response.status, response.statusText);
-                return;
-            }
-
-            const data = await response.json();
-            authToken = data.access_token;
-            console.log("Auth OK for", userId);
-        } catch (e) {
-            console.error("Auth error:", e);
+        function init() {
+            renderAgentsList();
+            setupEventListeners();
+            authenticateUser();
         }
-    }
 
-    window.addEventListener("load", initAuth);
-    
-    const agents = {
-        ceo:       { name: 'CEO', role: 'Стратегия и видение', icon: '🎯' },
-        cfo:       { name: 'CFO', role: 'Финансы и риски', icon: '💰' },
-        cpo:       { name: 'CPO', role: 'Продукт и UX', icon: '🔧' },
-        marketing: { name: 'Маркетинг', role: 'Маркетинг', icon: '📈' },
-        skeptic:   { name: 'Скептик', role: 'Критический советник', icon: '⚠️' },
-        summary:   { name: 'Итоги', role: 'Модератор сессии', icon: '✅' },
-    };
+        function renderAgentsList() {
+            const agentKeys = ["ceo", "cfo", "cpo", "marketing", "skeptic"];
+            agentsList.innerHTML = agentKeys.map(key => `
+                <div class="agent-item active" data-agent="${key}">
+                    <input type="checkbox" checked data-agent="${key}">
+                    <span class="agent-icon">${agents[key].icon}</span>
+                    <span class="agent-name">${agents[key].name}</span>
+                </div>
+            `).join("");
 
-    const ALL_AGENTS = ['ceo', 'cfo', 'cpo', 'marketing', 'skeptic'];
+            selectedAgents = new Set(agentKeys);
 
-    let selectedAgents = new Set(ALL_AGENTS);
-    let lastRoundAgents = [];
-    let hasSummary = false;
-    let chatHistory = [];
-
-    const chatArea = document.getElementById('chatArea');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const summaryBtn = document.getElementById('summaryBtn');
-    const debugCheckbox = document.getElementById('debugCheckbox');
-    let isLoading = false;
-
-    // авто‑ресайз textarea
-    messageInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-        
-        // Disable send button if empty
-        sendBtn.disabled = !this.value.trim();
-    });
-
-    // Initially disable send button
-    sendBtn.disabled = true;
-
-    // обработчики карточек агентов
-    setupAgentCards();
-
-    // отправка сообщения
-    sendBtn.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-
-    summaryBtn.addEventListener('click', async () => {
-        if (!hasSummary || isLoading) return;
-
-        try {
-            isLoading = true;
-            sendBtn.disabled = true;
-            summaryBtn.disabled = true;
-
-            const url = "/api/summary";
-
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${authToken}`,
-                },
-                body: JSON.stringify({
-                    history: chatHistory.slice(-20),
-                    debug: !!debugCheckbox.checked
-                })
-            });
-
-            if (!response.ok) {
-                const txt = await response.text().catch(() => "");
-                console.error("Summary error:", response.status, response.statusText, txt);
-
-                if (response.status === 429) {
-                    addMessage('Слишком много запросов к итогам. Подождите минуту и попробуйте снова.', 'agent', 'summary');
-                } else {
-                    addMessage('Не удалось пересчитать итоги. Попробуйте ещё раз.', 'agent', 'summary');
-                }
-                return;
-            }
-
-            const data = await response.json();
-            addMessage(data.text, 'agent', 'summary');
-
-        } catch (err) {
-            console.error("Request failed:", err);
-            addMessage('Ошибка связи при пересчёте итогов. Попробуйте ещё раз.', 'agent', 'summary');
-        } finally {
-            isLoading = false;
-            sendBtn.disabled = !messageInput.value.trim();
-            summaryBtn.disabled = false;
-        }
-    });
-
-    function setupAgentCards() {
-        document.querySelectorAll('.agent-card').forEach(card => {
-            const agent = card.dataset.agent;
-
-            card.addEventListener('click', () => {
-                if (isLoading) return;
-
-                const hasHistory = chatHistory.length > 0;
-
-                if (!hasHistory || !hasSummary) {
-                    if (selectedAgents.has(agent)) {
-                        selectedAgents.delete(agent);
-                        setAgentSelected(agent, false);
-                    } else {
+            document.querySelectorAll(".agent-item input").forEach(checkbox => {
+                checkbox.addEventListener("change", (e) => {
+                    const agent = e.target.dataset.agent;
+                    if (e.target.checked) {
                         selectedAgents.add(agent);
-                        setAgentSelected(agent, true);
+                        e.target.closest(".agent-item").classList.add("active");
+                    } else {
+                        selectedAgents.delete(agent);
+                        e.target.closest(".agent-item").classList.remove("active");
                     }
-                } else {
-                    runSingleAgentTurn(agent);
+                });
+            });
+        }
+
+        function setupEventListeners() {
+            messageInput.addEventListener("input", (e) => {
+                e.target.style.height = "auto";
+                e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
+                sendBtn.disabled = !e.target.value.trim();
+            });
+
+            messageInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
                 }
             });
-        });
 
-        selectedAgents.forEach(a => setAgentSelected(a, true));
-    }
+            sendBtn.addEventListener("click", sendMessage);
 
-    function setAgentSelected(agent, isSelected) {
-        const card = document.querySelector(`.agent-card[data-agent="${agent}"]`);
-        if (!card) return;
-        const dot = card.querySelector('.agent-status');
-        if (!dot) return;
-        if (isSelected) {
-            dot.classList.add('on');
-            dot.classList.remove('off');
-        } else {
-            dot.classList.add('off');
-            dot.classList.remove('on');
+            summaryBtn.addEventListener("click", async () => {
+                if (!hasSummary || isLoading) return;
+
+                try {
+                    isLoading = true;
+                    sendBtn.disabled = true;
+                    summaryBtn.disabled = true;
+
+                    const url = "/api/summary";
+
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${authToken}`,
+                        },
+                        body: JSON.stringify({
+                            history: chatHistory.slice(-20),
+                            debug: !!debugCheckbox.checked
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const txt = await response.text().catch(() => "");
+                        console.error("Summary error:", response.status, response.statusText, txt);
+
+                        if (response.status === 429) {
+                            addMessage('Слишком много запросов к итогам. Подождите минуту и попробуйте снова.', 'agent', 'summary');
+                        } else {
+                            addMessage('Не удалось пересчитать итоги. Попробуйте ещё раз.', 'agent', 'summary');
+                        }
+                        return;
+                    }
+
+                    const data = await response.json();
+                    addMessage(data.text, 'agent', 'summary', data);
+
+                } catch (err) {
+                    console.error("Request failed:", err);
+                    addMessage('Ошибка связи при пересчёте итогов. Попробуйте ещё раз.', 'agent', 'summary');
+                } finally {
+                    isLoading = false;
+                    sendBtn.disabled = !messageInput.value.trim();
+                    summaryBtn.disabled = false;
+                }
+            });
         }
-    }
 
-    // Парсинг структурированного ответа агента
-    function parseAgentResponse(text, agentType) {
-        const sections = [];
-        const lines = text.split('\n').filter(l => l.trim());
-        
-        lines.forEach(line => {
-            // Ищем паттерн [Label] — value или [Label]: value
-            const match = line.match(/^\[([^\]]+)\]\s*[—:-]\s*(.+)$/);
-            if (match) {
+        // ===== АУТЕНТИФИКАЦИЯ =====
+
+        function authenticateUser() {
+            const existingToken = localStorage.getItem("authToken");
+            const existingUserId = localStorage.getItem("userId");
+
+            if (existingToken && existingUserId) {
+                authToken = existingToken;
+                return;
+            }
+
+            const userId = prompt("Введите ваш ID (латиница, цифры, _ или -):", "user_" + Math.random().toString(36).substr(2, 9));
+
+            if (!userId) {
+                alert("Необходимо ввести ID для продолжения.");
+                authenticateUser();
+                return;
+            }
+
+            loginUser(userId);
+        }
+
+        async function loginUser(userId) {
+            try {
+                const response = await fetch("/api/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_id: userId })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                authToken = data.access_token;
+
+                localStorage.setItem("authToken", authToken);
+                localStorage.setItem("userId", userId);
+            } catch (err) {
+                console.error("Login failed:", err);
+                alert("Ошибка аутентификации. Попробуйте снова.");
+                authenticateUser();
+            }
+        }
+
+        // ===== DEBUG HELPER FUNCTIONS =====
+
+        function formatJson(obj) {
+            try {
+                return JSON.stringify(obj, null, 2);
+            } catch (e) {
+                return String(obj);
+            }
+        }
+
+        function createDebugPanel(debugData) {
+            const panel = document.createElement('div');
+            panel.className = 'debug-panel visible';
+
+            const title = document.createElement('div');
+            title.className = 'debug-panel-title';
+            title.textContent = '⚙️ Debug Info';
+            panel.appendChild(title);
+
+            const tabs = document.createElement('div');
+            tabs.className = 'debug-tabs';
+
+            const metricsTab = document.createElement('button');
+            metricsTab.className = 'debug-tab active';
+            metricsTab.textContent = 'Metrics';
+            metricsTab.addEventListener('click', () => switchDebugTab(panel, 'metrics'));
+
+            const inputTab = document.createElement('button');
+            inputTab.className = 'debug-tab';
+            inputTab.textContent = 'Input';
+            inputTab.addEventListener('click', () => switchDebugTab(panel, 'input'));
+
+            const outputTab = document.createElement('button');
+            outputTab.className = 'debug-tab';
+            outputTab.textContent = 'Output';
+            outputTab.addEventListener('click', () => switchDebugTab(panel, 'output'));
+
+            tabs.appendChild(metricsTab);
+            tabs.appendChild(inputTab);
+            tabs.appendChild(outputTab);
+            panel.appendChild(tabs);
+
+            const metricsContent = document.createElement('div');
+            metricsContent.className = 'debug-content active';
+
+            const metricsHTML = `
+                <div class="debug-row">
+                    <div class="debug-label">Model:</div>
+                    <div class="debug-value">${debugData.meta?.model || 'N/A'}</div>
+                </div>
+                <div class="debug-row">
+                    <div class="debug-label">Latency:</div>
+                    <div class="debug-value metric">${debugData.meta?.latency_ms?.toFixed(0) || '—'} ms</div>
+                </div>
+                <div class="debug-row">
+                    <div class="debug-label">Tokens:</div>
+                    <div class="debug-value">
+                        <div class="debug-tokens">
+                            <div class="debug-token-item">
+                                <div class="debug-token-label">Input</div>
+                                <div class="debug-token-value">${debugData.meta?.tokens_input || 0}</div>
+                            </div>
+                            <div class="debug-token-item">
+                                <div class="debug-token-label">Output</div>
+                                <div class="debug-token-value">${debugData.meta?.tokens_output || 0}</div>
+                            </div>
+                            <div class="debug-token-item">
+                                <div class="debug-token-label">Total</div>
+                                <div class="debug-token-value" style="color: #c23131;">${debugData.meta?.tokens_total || 0}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="debug-row">
+                    <div class="debug-label">Finish Reason:</div>
+                    <div class="debug-value">${debugData.meta?.finish_reason || 'unknown'}</div>
+                </div>
+                <div class="debug-row">
+                    <div class="debug-label">Timestamp:</div>
+                    <div class="debug-value">${debugData.meta?.timestamp || '—'}</div>
+                </div>
+            `;
+            metricsContent.innerHTML = metricsHTML;
+            panel.appendChild(metricsContent);
+
+            const inputContent = document.createElement('div');
+            inputContent.className = 'debug-content';
+            if (debugData.meta?.compressed_input) {
+                const jsonDiv = document.createElement('div');
+                jsonDiv.className = 'debug-json';
+                jsonDiv.textContent = formatJson(debugData.meta.compressed_input);
+                inputContent.appendChild(jsonDiv);
+            } else {
+                inputContent.textContent = 'No input data';
+            }
+            panel.appendChild(inputContent);
+
+            const outputContent = document.createElement('div');
+            outputContent.className = 'debug-content';
+            if (debugData.meta?.compressed_output) {
+                const jsonDiv = document.createElement('div');
+                jsonDiv.className = 'debug-json';
+                jsonDiv.textContent = formatJson(debugData.meta.compressed_output);
+                outputContent.appendChild(jsonDiv);
+            } else if (debugData.compressed) {
+                const jsonDiv = document.createElement('div');
+                jsonDiv.className = 'debug-json';
+                jsonDiv.textContent = formatJson(debugData.compressed);
+                outputContent.appendChild(jsonDiv);
+            } else {
+                outputContent.textContent = 'No output data';
+            }
+            panel.appendChild(outputContent);
+
+            return panel;
+        }
+
+        function switchDebugTab(panel, tabName) {
+            panel.querySelectorAll('.debug-tab').forEach(tab => tab.classList.remove('active'));
+            panel.querySelectorAll('.debug-content').forEach(content => content.classList.remove('active'));
+
+            const tabMap = {
+                'metrics': 0,
+                'input': 1,
+                'output': 2,
+            };
+
+            if (tabMap[tabName] !== undefined) {
+                panel.querySelectorAll('.debug-tab')[tabMap[tabName]].classList.add('active');
+                panel.querySelectorAll('.debug-content')[tabMap[tabName]].classList.add('active');
+            }
+        }
+
+        // ===== ПАРСИНГ ОТВЕТОВ =====
+
+        function parseAgentResponse(text, agentType) {
+            const lines = text.split('\n').filter(l => l.trim());
+            const sections = [];
+
+            lines.forEach(line => {
+                const match = line.match(/^\[([^\]]+)\]\s*—\s*(.+)$/);
+                if (!match) {
+                    return;
+                }
+
                 const label = match[1].trim();
                 const value = match[2].trim();
-                
-                // Определяем тип секции
-                let sectionType = 'text';
+
+                let type = 'text';
                 let badgeType = null;
-                
-                const labelLower = label.toLowerCase();
-                const valueLower = value.toLowerCase();
-                
-                if (labelLower.includes('verdict')) {
-                    sectionType = 'badge';
-                    if (valueLower.includes('go') && !valueLower.includes('no-go')) {
-                        badgeType = 'success';
-                    } else if (valueLower.includes('no-go')) {
-                        badgeType = 'danger';
-                    } else if (valueLower.includes('fast')) {
-                        badgeType = 'success';
-                    } else if (valueLower.includes('slow')) {
-                        badgeType = 'warning';
-                    } else if (valueLower.includes('safe')) {
-                        badgeType = 'success';
-                    } else if (valueLower.includes('vulnerable')) {
-                        badgeType = 'danger';
-                    } else if (valueLower.includes('scalable')) {
-                        badgeType = 'info';
-                    } else if (valueLower.includes('manual')) {
-                        badgeType = 'warning';
-                    } else if (valueLower.includes('fatal')) {
-                        badgeType = 'danger';
-                    } else if (valueLower.includes('fixable')) {
-                        badgeType = 'warning';
+
+                if (label.toLowerCase().includes('verdict') || label.toLowerCase().includes('confidence')) {
+                    const upperVal = value.toUpperCase();
+                    if (upperVal === 'GO' || upperVal === 'FAST' || upperVal === 'SAFE' || upperVal === 'SCALABLE' || upperVal === 'FIXABLE') {
+                        type = 'badge';
+                        badgeType = upperVal.toLowerCase();
+                    } else if (upperVal === 'NO-GO' || upperVal === 'SLOW' || upperVal === 'VULNERABLE' || upperVal === 'MANUAL' || upperVal === 'FATAL') {
+                        type = 'badge';
+                        badgeType = upperVal.toLowerCase().replace(/-/g, '');
+                    } else if (value.includes('%')) {
+                        type = 'progress';
                     }
-                } else if (labelLower.includes('confidence')) {
-                    sectionType = 'progress';
                 }
-                
-                sections.push({ label, value, type: sectionType, badgeType });
-            } else if (line.trim()) {
-                // Обычная строка без структуры
-                sections.push({ label: null, value: line.trim(), type: 'text' });
-            }
-        });
-        
-        return sections.length > 0 ? sections : [{ label: null, value: text, type: 'text' }];
-    }
 
-    // Отрисовка структурированной карточки агента
-    function addMessage(text, sender = 'user', agentType = null) {
-        const messageEl = document.createElement('div');
-        messageEl.className = `message ${sender}`;
-        
-        if (sender === 'agent' && agentType) {
-            messageEl.classList.add(agentType);
-            
-            const header = document.createElement('div');
-            header.className = 'message-header';
-            header.innerHTML = `
-                <span class="agent-icon">${agents[agentType].icon}</span>
-                <span>${agents[agentType].name}</span>
-            `;
-            messageEl.appendChild(header);
-            
-            const content = document.createElement('div');
-            content.className = 'message-content';
-            
-            const sections = parseAgentResponse(text, agentType);
-            
-            sections.forEach(section => {
-                const sectionEl = document.createElement('div');
-                sectionEl.className = `content-section ${agentType}`;
-                
-                if (section.label) {
-                    const labelEl = document.createElement('div');
-                    labelEl.className = 'section-label';
-                    labelEl.textContent = section.label;
-                    sectionEl.appendChild(labelEl);
-                }
-                
-                const valueEl = document.createElement('div');
-                valueEl.className = 'section-value';
-                
-                if (section.type === 'badge' && section.badgeType) {
-                    const badge = document.createElement('span');
-                    badge.className = `badge ${section.badgeType}`;
-                    badge.textContent = section.value;
-                    valueEl.appendChild(badge);
-                } else if (section.type === 'progress') {
-                    // Извлекаем процент
-                    const percentMatch = section.value.match(/(\d+)%/);
-                    const percent = percentMatch ? parseInt(percentMatch[1], 10) : 85;
-                    
-                    const progressBar = document.createElement('div');
-                    progressBar.className = 'confidence-bar';
-                    
-                    const fill = document.createElement('div');
-                    fill.className = 'confidence-fill';
-                    fill.style.width = '0%';
-                    progressBar.appendChild(fill);
-                    
-                    const percentText = document.createElement('div');
-                    percentText.className = 'confidence-text';
-                    percentText.textContent = section.value;
-                    
-                    valueEl.appendChild(progressBar);
-                    valueEl.appendChild(percentText);
-                    
-                    // Анимируем прогресс-бар
-                    setTimeout(() => {
-                        fill.style.width = `${percent}%`;
-                    }, 100);
-                } else {
-                    valueEl.textContent = section.value;
-                }
-                
-                sectionEl.appendChild(valueEl);
-                content.appendChild(sectionEl);
-            });
-            
-            messageEl.appendChild(content);
-        } else {
-            messageEl.textContent = text;
-        }
-        
-        // Удаляем empty state если есть
-        const emptyState = chatArea.querySelector('.empty-state');
-        if (emptyState) {
-            emptyState.remove();
-        }
-        
-        chatArea.appendChild(messageEl);
-        chatArea.scrollTop = chatArea.scrollHeight;
-        
-        // Добавляем в историю
-        if (sender === 'user') {
-            chatHistory.push(`User: ${text}`);
-        } else if (agentType) {
-            chatHistory.push(`${agents[agentType].name}: ${text}`);
-        }
-    }
-
-    // Skeleton loader при загрузке
-    function addSkeletonMessage() {
-        const skeleton = document.createElement('div');
-        skeleton.className = 'skeleton-message';
-        skeleton.innerHTML = `
-            <div class="skeleton-header"></div>
-            <div class="skeleton-line long"></div>
-            <div class="skeleton-line medium"></div>
-            <div class="skeleton-line short"></div>
-        `;
-        
-        const emptyState = chatArea.querySelector('.empty-state');
-        if (emptyState) {
-            emptyState.remove();
-        }
-        
-        chatArea.appendChild(skeleton);
-        chatArea.scrollTop = chatArea.scrollHeight;
-        return skeleton;
-    }
-
-    function removeSkeletonMessage(skeleton) {
-        if (skeleton && skeleton.parentNode) {
-            skeleton.remove();
-        }
-    }
-
-    async function sendMessage() {
-        const text = messageInput.value.trim();
-        if (!text || isLoading) return;
-
-        addMessage(text, 'user');
-        messageInput.value = '';
-        messageInput.style.height = 'auto';
-        sendBtn.disabled = true;
-
-        isLoading = true;
-
-        const activeAgentsArray = Array.from(selectedAgents);
-        const skeleton = addSkeletonMessage();
-
-        try {
-            const response = await fetch('/api/board', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`,
-                },
-                body: JSON.stringify({
-                    message: text,
-                    active_agents: activeAgentsArray,
-                    history: chatHistory.slice(-20),
-                    mode: hasSummary ? 'followup' : 'initial',
-                    debug: !!debugCheckbox.checked
-                })
+                sections.push({ label, value, type, badgeType });
             });
 
-            removeSkeletonMessage(skeleton);
+            return sections;
+        }
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
+        function addMessage(text, sender = 'user', agentType = null, debugData = null) {
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${sender}`;
+            
+            if (sender === 'agent' && agentType) {
+                messageEl.classList.add(agentType);
+                
+                const header = document.createElement('div');
+                header.className = 'message-header';
+                header.innerHTML = `
+                    <span class="agent-icon">${agents[agentType]?.icon || '🤖'}</span>
+                    <span>${agents[agentType]?.name || agentType}</span>
+                `;
+                messageEl.appendChild(header);
+                
+                const content = document.createElement('div');
+                content.className = 'message-content';
+                
+                const sections = parseAgentResponse(text, agentType);
+                
+                sections.forEach(section => {
+                    const sectionEl = document.createElement('div');
+                    sectionEl.className = `content-section ${agentType}`;
+                    
+                    if (section.label) {
+                        const labelEl = document.createElement('div');
+                        labelEl.className = 'section-label';
+                        labelEl.textContent = section.label;
+                        sectionEl.appendChild(labelEl);
+                    }
+                    
+                    const valueEl = document.createElement('div');
+                    valueEl.className = 'section-value';
+                    
+                    if (section.type === 'badge' && section.badgeType) {
+                        const badge = document.createElement('span');
+                        badge.className = `badge ${section.badgeType}`;
+                        badge.textContent = section.value;
+                        valueEl.appendChild(badge);
+                    } else if (section.type === 'progress') {
+                        const percentMatch = section.value.match(/(\d+)%/);
+                        const percent = percentMatch ? parseInt(percentMatch[1], 10) : 85;
+                        
+                        const progressBar = document.createElement('div');
+                        progressBar.className = 'confidence-bar';
+                        
+                        const fill = document.createElement('div');
+                        fill.className = 'confidence-fill';
+                        fill.style.width = '0%';
+                        progressBar.appendChild(fill);
+                        
+                        const percentText = document.createElement('div');
+                        percentText.className = 'confidence-text';
+                        percentText.textContent = section.value;
+                        
+                        valueEl.appendChild(progressBar);
+                        valueEl.appendChild(percentText);
+                        
+                        setTimeout(() => {
+                            fill.style.width = `${percent}%`;
+                        }, 100);
+                    } else {
+                        valueEl.textContent = section.value;
+                    }
+                    
+                    sectionEl.appendChild(valueEl);
+                    content.appendChild(sectionEl);
+                });
+                
+                messageEl.appendChild(content);
 
-            const json = await response.json();
-
-            // debug=false -> старый формат: массив AgentReply
-            // debug=true  -> новый формат: { user_message_original, user_message_compressed, agents_replies: [...] }
-            let replies;
-            if (debugCheckbox.checked && json && json.agents_replies && Array.isArray(json.agents_replies)) {
-                replies = json.agents_replies;
-            } else if (Array.isArray(json)) {
-                replies = json;
+                if (debugCheckbox.checked && debugData) {
+                    const debugPanel = createDebugPanel(debugData);
+                    messageEl.appendChild(debugPanel);
+                }
             } else {
-                replies = [];
+                messageEl.textContent = text;
             }
-
-            replies.forEach(reply => {
-                addMessage(reply.text, 'agent', reply.agent);
-            });
-
-            if (!hasSummary) {
-                hasSummary = true;
-                summaryBtn.style.display = 'block';
-                lastRoundAgents = activeAgentsArray;
+            
+            const emptyState = chatArea.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
             }
-
-        } catch (err) {
-            removeSkeletonMessage(skeleton);
-            console.error('Request failed:', err);
-            addMessage('Ошибка связи с сервером. Попробуйте ещё раз.', 'agent', 'summary');
-        } finally {
-            isLoading = false;
-            sendBtn.disabled = !messageInput.value.trim();
+            
+            chatArea.appendChild(messageEl);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            
+            if (sender === 'user') {
+                chatHistory.push(`User: ${text}`);
+            } else if (agentType) {
+                chatHistory.push(`${agents[agentType]?.name || agentType}: ${text}`);
+            }
         }
-    }
 
-    async function runSingleAgentTurn(agent) {
-        if (isLoading) return;
-
-        isLoading = true;
-        sendBtn.disabled = true;
-
-        const skeleton = addSkeletonMessage();
-
-        try {
-            const response = await fetch('/api/agent', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`,
-                },
-                body: JSON.stringify({
-                    agent: agent,
-                    history: chatHistory.slice(-20),
-                    debug: !!debugCheckbox.checked
-                })
-            });
-
-            removeSkeletonMessage(skeleton);
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+        function addSkeletonMessage() {
+            const skeleton = document.createElement('div');
+            skeleton.className = 'message agent';
+            skeleton.innerHTML = `
+                <div class="skeleton">
+                    <div class="skeleton-line" style="width: 100%; height: 16px;"></div>
+                </div>
+                <div class="skeleton">
+                    <div class="skeleton-line" style="width: 80%; height: 14px;"></div>
+                </div>
+                <div class="skeleton">
+                    <div class="skeleton-line" style="width: 90%; height: 14px;"></div>
+                </div>
+            `;
+            const emptyState = chatArea.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
             }
-
-            const data = await response.json();
-            addMessage(data.text, 'agent', agent);
-
-        } catch (err) {
-            removeSkeletonMessage(skeleton);
-            console.error('Single agent request failed:', err);
-            addMessage('Ошибка при запросе к агенту. Попробуйте ещё раз.', 'agent', agent);
-        } finally {
-            isLoading = false;
-            sendBtn.disabled = !messageInput.value.trim();
+            chatArea.appendChild(skeleton);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            return skeleton;
         }
-    }
-</script>
+
+        function removeSkeletonMessage(skeleton) {
+            if (skeleton && skeleton.parentNode) {
+                skeleton.remove();
+            }
+        }
+
+        // ===== ОТПРАВКА СООБЩЕНИЙ =====
+
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || isLoading) return;
+
+            addMessage(text, 'user');
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendBtn.disabled = true;
+
+            isLoading = true;
+
+            const activeAgentsArray = Array.from(selectedAgents);
+            const skeleton = addSkeletonMessage();
+
+            try {
+                const response = await fetch('/api/board', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                    },
+                    body: JSON.stringify({
+                        message: text,
+                        active_agents: activeAgentsArray,
+                        history: chatHistory.slice(-20),
+                        mode: hasSummary ? 'followup' : 'initial',
+                        debug: !!debugCheckbox.checked
+                    })
+                });
+
+                removeSkeletonMessage(skeleton);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const json = await response.json();
+
+                if (!json.agents || !Array.isArray(json.agents)) {
+                    throw new Error('Invalid response format');
+                }
+
+                json.agents.forEach(reply => {
+                    addMessage(reply.text, 'agent', reply.agent, reply);
+                });
+
+                if (!hasSummary) {
+                    hasSummary = true;
+                    summaryBtn.style.display = 'block';
+                    lastRoundAgents = activeAgentsArray;
+                }
+
+            } catch (err) {
+                removeSkeletonMessage(skeleton);
+                console.error('Request failed:', err);
+                addMessage('Ошибка связи с сервером. Попробуйте ещё раз.', 'agent', 'summary');
+            } finally {
+                isLoading = false;
+                sendBtn.disabled = !messageInput.value.trim();
+            }
+        }
+
+        async function runSingleAgentTurn(agent) {
+            if (isLoading) return;
+
+            isLoading = true;
+            sendBtn.disabled = true;
+
+            const skeleton = addSkeletonMessage();
+
+            try {
+                const response = await fetch('/api/agent', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                    },
+                    body: JSON.stringify({
+                        agent: agent,
+                        history: chatHistory.slice(-20),
+                        debug: !!debugCheckbox.checked
+                    })
+                });
+
+                removeSkeletonMessage(skeleton);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                addMessage(data.text, 'agent', agent, data);
+
+            } catch (err) {
+                removeSkeletonMessage(skeleton);
+                console.error('Single agent request failed:', err);
+                addMessage('Ошибка при запросе к агенту. Попробуйте ещё раз.', 'agent', agent);
+            } finally {
+                isLoading = false;
+                sendBtn.disabled = !messageInput.value.trim();
+            }
+        }
+
+        init();
+    </script>
 </body>
 </html>
