@@ -48,6 +48,25 @@
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100%;
+                width: 80%;
+                transform: translateX(-100%);
+                z-index: 200;
+                box-shadow: 4px 0 16px rgba(0,0,0,0.1);
+                border-right: none;
+                padding-top: 70px;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+        }
+
         .agents-section h3 {
             font-size: 12px;
             font-weight: 700;
@@ -190,15 +209,22 @@
 
         .overlay {
             display: none;
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             background: rgba(0,0,0,0.5);
-            z-index: 15;
+            z-index: 150;
             opacity: 0;
             transition: opacity 0.3s;
+        }
+
+        @media (max-width: 768px) {
+            .overlay.visible {
+                display: block;
+                opacity: 1;
+            }
         }
 
         /* ===== MAIN AREA ===== */
