@@ -9,25 +9,23 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
-
-        body {
+        }        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 0;
         }
 
         .container {
             display: flex;
             width: 100%;
             max-width: 1200px;
-            height: 85vh;
+            height: 100vh;
             background: white;
-            border-radius: 12px;
+            border-radius: 0;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
         }
@@ -41,6 +39,130 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
+        }
+
+        /* Мобильная адаптация (<768px) */
+        @media (max-width: 767px) {
+            body {
+                padding: 0;
+            }
+
+            .container {
+                border-radius: 0;
+                height: 100vh;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .sidebar.mobile-open {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                max-width: 100%;
+                height: 100%;
+                z-index: 1000;
+                border-right: none;
+                border-radius: 0;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+            }
+
+            .sidebar-overlay.visible {
+                display: block;
+            }
+        }
+
+        /* ===== МОБИЛЬНАЯ ТАБНАЯ НАВИГАЦИЯ ===== */
+        .mobile-tabs {
+            display: none;
+            gap: 8px;
+            padding: 12px 16px 0 16px;
+            background: white;
+            border-bottom: 1px solid #e9ecef;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        @media (max-width: 767px) {
+            .mobile-tabs {
+                display: flex;
+            }
+        }
+
+        .mobile-tab-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 200ms;
+            min-width: fit-content;
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .mobile-tab-btn:hover {
+            background: #f0f2f5;
+        }
+
+        .mobile-tab-btn.active {
+            background: #e7f3ff;
+            color: #0c5aa0;
+        }
+
+        .mobile-tab-btn .agent-icon {
+            font-size: 20px;
+        }
+
+        .mobile-hamburger {
+            display: none;
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 998;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            font-size: 20px;
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 767px) {
+            .mobile-hamburger {
+                display: flex;
+            }
+        }
+
+        .mobile-hamburger.close {
+            top: 20px;
+            background: #764ba2;
         }
 
         .agents-section h3 {
@@ -120,13 +242,20 @@
             flex: 1;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
         .chat-area {
             flex: 1;
-            padding: 20px;
+            padding: 16px;
             overflow-y: auto;
             background: #ffffff;
+        }
+
+        @media (max-width: 767px) {
+            .chat-area {
+                padding: 12px;
+            }
         }
 
         .empty-state {
@@ -272,15 +401,16 @@
             color: #721c24;
         }
 
+        /* ✅ ФИКС: Прогресс-бар с процентом */
         .confidence-bar {
             width: 100%;
-            height: 20px;
+            height: 24px;
             background: #e9ecef;
             border-radius: 4px;
             overflow: hidden;
             position: relative;
-            display: flex;           /* ← ДОБАВИТЬ */ 
-            align-items: center;     /* ← ДОБАВИТЬ */
+            display: flex;
+            align-items: center;
         }
 
         .confidence-fill {
@@ -295,12 +425,12 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 600;
             color: #333;
             white-space: nowrap;
-            z-index: 10;              
-            pointer-events: none;     
+            z-index: 10;
+            pointer-events: none;
         }
 
         .input-area {
@@ -614,9 +744,64 @@
                     }
                 });
             });
+
+            renderMobileTabs();
+        }
+
+        function renderMobileTabs() {
+            const mobileTabs = document.getElementById("mobileTabs");
+            const agentKeys = ["ceo", "cfo", "cpo", "marketing", "skeptic"];
+            
+            mobileTabs.innerHTML = agentKeys.map(key => `
+                <button class="mobile-tab-btn active" data-agent="${key}">
+                    <span class="agent-icon">${agents[key].icon}</span>
+                    <span>${agents[key].name}</span>
+                </button>
+            `).join("");
+
+            document.querySelectorAll(".mobile-tab-btn").forEach(btn => {
+                btn.addEventListener("click", (e) => {
+                    const agent = e.currentTarget.dataset.agent;
+                    const checkbox = document.querySelector(`.agent-item input[data-agent="${agent}"]`);
+                    if (checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                        checkbox.dispatchEvent(new Event("change"));
+                        
+                        document.querySelectorAll(".mobile-tab-btn").forEach(b => b.classList.remove("active"));
+                        if (checkbox.checked) {
+                            e.currentTarget.classList.add("active");
+                        }
+                    }
+                });
+            });
         }
 
         function setupEventListeners() {
+            const hamburgerBtn = document.getElementById("hamburgerBtn");
+            const sidebarOverlay = document.getElementById("sidebarOverlay");
+            const sidebar = document.getElementById("sidebar");
+
+            // Hamburger menu для мобилей
+            hamburgerBtn.addEventListener("click", () => {
+                const isMobileOpen = sidebar.classList.contains("mobile-open");
+                if (isMobileOpen) {
+                    sidebar.classList.remove("mobile-open");
+                    sidebarOverlay.classList.remove("visible");
+                    hamburgerBtn.classList.remove("close");
+                } else {
+                    sidebar.classList.add("mobile-open");
+                    sidebarOverlay.classList.add("visible");
+                    hamburgerBtn.classList.add("close");
+                }
+            });
+
+            // Закрыть drawer при клике на оверлей
+            sidebarOverlay.addEventListener("click", () => {
+                sidebar.classList.remove("mobile-open");
+                sidebarOverlay.classList.remove("visible");
+                hamburgerBtn.classList.remove("close");
+            });
+
             messageInput.addEventListener("input", (e) => {
                 e.target.style.height = "auto";
                 e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
@@ -953,7 +1138,6 @@
                         progressBar.appendChild(percentText);
                         
                         valueEl.appendChild(progressBar);
-                        
                         
                         setTimeout(() => {
                             fill.style.width = `${percent}%`;
