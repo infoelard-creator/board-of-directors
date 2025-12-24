@@ -1,6 +1,7 @@
 import os
 import uuid
-from datetime import datetime, timedelta
+import time
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Union
 import hashlib
 import json
@@ -11,7 +12,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field  # ✅ Добавлен Field
+from pydantic import BaseModel, Field
 import logging
 from logging.handlers import RotatingFileHandler
 from db import init_db, get_db, create_user_if_not_exists, User
@@ -389,27 +390,6 @@ class ChatRequest(BaseModel):
     debug: Optional[bool] = False
 
 
-class AgentReply(BaseModel):
-    """Ответ агента (совместимо с фронтом)."""
-    agent: str
-    text: str
-    compressed: Optional[dict] = None
-
-
-class AgentReplyWithDebug(BaseModel):
-    """Ответ агента с обязательным сжатым полем."""
-    agent: str
-    text: str
-    compressed: dict
-
-
-class ChatResponseDebug(BaseModel):
-    """Расширенный ответ с полной отладочной информацией."""
-    user_message_original: str
-    user_message_compressed: dict
-    agents_replies: List[AgentReplyWithDebug]
-
-
 class SingleAgentRequest(BaseModel):
     """Запрос для одного агента."""
     agent: str
@@ -418,22 +398,10 @@ class SingleAgentRequest(BaseModel):
     debug: Optional[bool] = False
 
 
-class SingleAgentReply(BaseModel):
-    """Ответ одного агента."""
-    text: str
-    compressed: Optional[dict] = None
-
-
 class SummaryRequest(BaseModel):
     """Запрос пересчёта итогов."""
     history: Optional[List[str]] = None
     debug: Optional[bool] = False
-
-
-class SummaryReply(BaseModel):
-    """Ответ пересчёта итогов."""
-    text: str
-    compressed: Optional[dict] = None
 
 
 class LoginRequest(BaseModel):
@@ -447,7 +415,72 @@ class LoginRequest(BaseModel):
     )
 
 
+# ✅ НОВЫЕ МОДЕЛИ ДЛЯ DEBUG
+
+class DebugMetadata(BaseModel):
+    """Отладочная информация агента."""
+    agent: str
+    compressed_input: Optional[dict] = None
+    compressed_output: Optional[dict] = None
+    tokens_input: int = 0
+    tokens_output: int = 0
+    tokens_total: int = 0
+    latency_ms: float = 0.0
+    model: str = "GigaChat-2"
+    finish_reason: Optional[str] = None
+    timestamp: str = ""
+
+
+class AgentReplyV2(BaseModel):
+    """Ответ агента с опциональной отладкой."""
+    agent: str
+    text: str
+    compressed: Optional[dict] = None
+    meta: Optional[DebugMetadata] = None
+
+
+class ChatResponseV2(BaseModel):
+    """Единая структура ответа."""
+    agents: List[AgentReplyV2]
+    user_message_compressed: Optional[dict] = None
+    debug: bool = False
+
+
 # ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
+
+def extract_usage_from_response(response_json: dict) -> tuple:
+    """Извлекает usage из ответа GigaChat API."""
+    usage = response_json.get("usage", {})
+    return (
+        usage.get("prompt_tokens", 0),
+        usage.get("completion_tokens", 0),
+        usage.get("total_tokens", 0),
+    )
+
+
+def create_debug_metadata(
+    agent: str,
+    compressed_input: Optional[dict] = None,
+    compressed_output: Optional[dict] = None,
+    latency_ms: float = 0.0,
+    tokens_input: int = 0,
+    tokens_output: int = 0,
+    finish_reason: Optional[str] = None,
+) -> DebugMetadata:
+    """Создаёт объект отладки для агента."""
+    return DebugMetadata(
+        agent=agent,
+        compressed_input=compressed_input,
+        compressed_output=compressed_output,
+        tokens_input=tokens_input,
+        tokens_output=tokens_output,
+        tokens_total=tokens_input + tokens_output,
+        latency_ms=latency_ms,
+        model="GigaChat-2",
+        finish_reason=finish_reason,
+        timestamp=datetime.utcnow().isoformat() + "Z",
+    )
+
 
 def parse_user_request(user_msg: str, user_id: str = "anonymous") -> ParsedRequest:
     """Парсит исходный запрос пользователя в структурированную форму."""
@@ -575,7 +608,6 @@ def compress_user_message(user_msg: str, user_id: str = "anonymous") -> Compress
     try:
         compressed_json = json.loads(compressor_output)
         
-        # Проверка что JSON не пустой и содержит обязательные поля
         if not compressed_json or not compressed_json.get("intent") or not compressed_json.get("domain"):
             logger.warning("Compressor returned incomplete JSON: %s", compressed_json)
             compressed_json = {
@@ -604,8 +636,100 @@ def compress_user_message(user_msg: str, user_id: str = "anonymous") -> Compress
     return compressed
 
 
-def expand_agent_output(agent: str, compressed_output: dict) -> str:
-    """Разворачивает сжатый JSON-ответ агента в читаемый текст."""
+def ask_gigachat(
+    agent: str,
+    user_msg: str,
+    track_usage: bool = False,
+) -> tuple:
+    """
+    Запрос к GigaChat.
+    Возвращает: (ответ_текст, usage_dict)
+    """
+    token = get_gigachat_token()
+    system_prompt = AGENT_SYSTEM_PROMPTS[agent]
+    params = AGENT_PARAMS[agent]
+
+    agent_input = user_msg
+
+    payload = {
+        "model": "GigaChat-2",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": agent_input},
+        ],
+        "stream": False,
+        "temperature": params["temperature"],
+        "max_tokens": params["max_tokens"],
+        "top_p": params["top_p"],
+    }
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    url = f"{GIGA_API_BASE}/api/v1/chat/completions"
+
+    start_time = time.time()
+
+    logger.info(
+        "Chat request -> %s | agent=%s | temp=%.1f | max_tokens=%d",
+        url,
+        agent,
+        params["temperature"],
+        params["max_tokens"],
+    )
+
+    resp = requests.post(url, headers=headers, json=payload, timeout=60, verify=False)
+
+    latency_ms = (time.time() - start_time) * 1000
+
+    logger.info(
+        "Chat response <- %s | agent=%s | status=%s | latency=%.0fms",
+        url,
+        agent,
+        resp.status_code,
+        latency_ms,
+    )
+
+    resp.raise_for_status()
+    j = resp.json()
+    
+    finish_reason = j.get("choices", [{}])[0].get("finish_reason", "unknown")
+    tokens_input, tokens_output, tokens_total = extract_usage_from_response(j)
+    
+    usage_dict = {
+        "tokens_input": tokens_input,
+        "tokens_output": tokens_output,
+        "tokens_total": tokens_total,
+        "finish_reason": finish_reason,
+        "latency_ms": latency_ms,
+    }
+    
+    response_text = j["choices"][0]["message"]["content"].strip()
+    
+    if track_usage:
+        logger.info(
+            "Usage | agent=%s | tokens_in=%d | tokens_out=%d | finish_reason=%s",
+            agent,
+            tokens_input,
+            tokens_output,
+            finish_reason,
+        )
+    
+    return response_text, usage_dict
+
+
+def expand_agent_output(
+    agent: str,
+    compressed_output: dict,
+    track_usage: bool = False,
+) -> tuple:
+    """
+    Разворачивает сжатый JSON-ответ агента в читаемый текст.
+    Возвращает: (expanded_text, usage_dict)
+    """
     token = get_gigachat_token()
 
     agent_context = f"Агент: {agent.upper()}\n"
@@ -633,6 +757,8 @@ def expand_agent_output(agent: str, compressed_output: dict) -> str:
 
     url = f"{GIGA_API_BASE}/api/v1/chat/completions"
 
+    start_time = time.time()
+
     logger.info(
         "Expander request -> %s | agent=%s",
         url,
@@ -640,19 +766,34 @@ def expand_agent_output(agent: str, compressed_output: dict) -> str:
     )
 
     resp = requests.post(url, headers=headers, json=payload, timeout=60, verify=False)
+
+    latency_ms = (time.time() - start_time) * 1000
+
     resp.raise_for_status()
 
     j = resp.json()
     expanded_text = j["choices"][0]["message"]["content"].strip()
+    
+    finish_reason = j.get("choices", [{}])[0].get("finish_reason", "unknown")
+    tokens_input, tokens_output, tokens_total = extract_usage_from_response(j)
+    
+    usage_dict = {
+        "tokens_input": tokens_input,
+        "tokens_output": tokens_output,
+        "tokens_total": tokens_total,
+        "finish_reason": finish_reason,
+        "latency_ms": latency_ms,
+    }
 
     logger.info(
-        "Expander response <- %s | agent=%s | text_len=%d",
+        "Expander response <- %s | agent=%s | text_len=%d | latency=%.0fms",
         url,
         agent,
         len(expanded_text),
+        latency_ms,
     )
 
-    return expanded_text
+    return expanded_text, usage_dict
 
 
 def compress_history(history: Optional[List[str]], max_items: int = 15) -> str:
@@ -661,56 +802,6 @@ def compress_history(history: Optional[List[str]], max_items: int = 15) -> str:
         return ""
     recent = history[-max_items:]
     return "\n".join(recent)
-
-
-def ask_gigachat(agent: str, user_msg: str) -> str:
-    """Запрос к GigaChat с оптимизированными параметрами."""
-    token = get_gigachat_token()
-    system_prompt = AGENT_SYSTEM_PROMPTS[agent]
-    params = AGENT_PARAMS[agent]
-
-    agent_input = user_msg
-
-    payload = {
-        "model": "GigaChat-2",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": agent_input},
-        ],
-        "stream": False,
-        "temperature": params["temperature"],
-        "max_tokens": params["max_tokens"],
-        "top_p": params["top_p"],
-    }
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
-
-    url = f"{GIGA_API_BASE}/api/v1/chat/completions"
-
-    logger.info(
-        "Chat request -> %s | agent=%s | temp=%.1f | max_tokens=%d",
-        url,
-        agent,
-        params["temperature"],
-        params["max_tokens"],
-    )
-
-    resp = requests.post(url, headers=headers, json=payload, timeout=60, verify=False)
-
-    logger.info(
-        "Chat response <- %s | agent=%s | status=%s",
-        url,
-        agent,
-        resp.status_code,
-    )
-
-    resp.raise_for_status()
-    j = resp.json()
-    return j["choices"][0]["message"]["content"].strip()
 
 
 # ===== FASTAPI ПРИЛОЖЕНИЕ =====
@@ -756,19 +847,16 @@ async def login(
     return TokenResponse(access_token=token)
 
 
-@app.post("/api/board")
+@app.post("/api/board", response_model=ChatResponseV2)
 @limiter.limit("10/minute")
 async def board_chat(
     req: ChatRequest,
     request: Request,
     user_id: str = Depends(verify_token),
-) -> Union[List[AgentReply], Dict]:
+) -> ChatResponseV2:
     """
-    Оптимизированная версия board_chat с компрессией.
-    1. Сжимаем исходный запрос пользователя
-    2. Все агенты получают СЖАТУЮ выжимку и отвечают в СЖАТОМ формате
-    3. Разжимаем ответы для пользователя
-    4. Возвращаем: разжатый текст для UI + (опционально) сжатую версию для отладки
+    Оптимизированная версия board_chat с единым контрактом.
+    Всегда возвращает ChatResponseV2 с agents[], debug-данные только если debug=true.
     """
     user_msg = req.message
     mode = req.mode or "initial"
@@ -787,7 +875,6 @@ async def board_chat(
     active = req.active_agents if req.active_agents is not None else order
     active_ordered = [a for a in order if a in active]
 
-    # Шаг 1: Сжимаем исходное сообщение пользователя
     compressed_user_msg = compress_user_message(user_msg, user_id=user_id)
     logger.info(
         "Compressed user message | intent=%s | domain=%s | idea_summary=%s",
@@ -796,27 +883,23 @@ async def board_chat(
         compressed_user_msg.idea_summary,
     )
 
-    replies: List[AgentReply] = []
-    ctx: dict[str, dict] = {}  # Хранит СЖАТЫЕ ответы (dict)
+    replies: List[AgentReplyV2] = []
+    ctx: dict[str, dict] = {}
 
     try:
-        # Шаг 2: Обрабатываем каждого агента
         for agent in active_ordered:
-            # Строим контекст из сжатых данных
             parts: List[str] = [
                 "СЖАТЫЙ ЗАПРОС ПОЛЬЗОВАТЕЛЯ (JSON):",
                 json.dumps(compressed_user_msg.dict(), ensure_ascii=False, indent=2),
             ]
 
-            # Добавляем сжатые мнения предыдущих агентов
             if ctx:
                 parts.append("\nСЖАТЫЕ МНЕНИЯ ДРУГИХ ЧЛЕНОВ СОВЕТА (JSON):")
                 for prev_agent in order:
                     if prev_agent in ctx:
                         parts.append(f"{prev_agent}:")
-                        parts.append(json.dumps(ctx[prev_agent], ensure_ascii=False, indent=2))
+                        parts.append(json.dumps(ctx[prev_agent]["compressed"], ensure_ascii=False, indent=2))
 
-            # Добавляем историю (сжатую)
             compressed = compress_history(req.history, max_items=5)
             if compressed:
                 parts.append("\nВЫДЕЖКА ИЗ ИСТОРИИ (последние 5 сообщений):")
@@ -824,10 +907,8 @@ async def board_chat(
 
             agent_input = "\n".join(parts)
 
-            # Получаем СЖАТЫЙ ответ от агента
-            raw_response = ask_gigachat(agent, agent_input)
+            raw_response, agent_usage = ask_gigachat(agent, agent_input, track_usage=debug)
 
-            # Парсим JSON ответ
             try:
                 compressed_response = json.loads(raw_response)
                 logger.info(
@@ -843,21 +924,29 @@ async def board_chat(
                     "raw_response": raw_response
                 }
 
-            # Сохраняем сжатый ответ для следующих агентов
-            ctx[agent] = compressed_response
+            ctx[agent] = {"compressed": compressed_response, "usage": agent_usage}
 
-            # Разжимаем для фронта
-            expanded_text = expand_agent_output(agent, compressed_response)
+            expanded_text, expander_usage = expand_agent_output(agent, compressed_response, track_usage=debug)
 
-            # Возвращаем: разжатый текст + опционально сжатый (для отладки)
-            reply = AgentReply(
+            reply = AgentReplyV2(
                 agent=agent,
                 text=expanded_text,
-                compressed=compressed_response if debug else None
             )
+
+            if debug:
+                reply.compressed = compressed_response
+                reply.meta = create_debug_metadata(
+                    agent=agent,
+                    compressed_input={"user_msg": user_msg[:100], "intent": compressed_user_msg.intent},
+                    compressed_output=compressed_response,
+                    latency_ms=agent_usage.get("latency_ms", 0.0) + expander_usage.get("latency_ms", 0.0),
+                    tokens_input=agent_usage.get("tokens_input", 0) + expander_usage.get("tokens_input", 0),
+                    tokens_output=agent_usage.get("tokens_output", 0) + expander_usage.get("tokens_output", 0),
+                    finish_reason=agent_usage.get("finish_reason", "unknown"),
+                )
+
             replies.append(reply)
 
-        # Шаг 3: Summary агент (если mode="initial")
         if mode == "initial":
             summary_parts: List[str] = [
                 "СЖАТЫЙ ЗАПРОС ПОЛЬЗОВАТЕЛЯ (JSON):",
@@ -869,11 +958,11 @@ async def board_chat(
             for agent in active_ordered:
                 if agent in ctx:
                     summary_parts.append(f"{agent}:")
-                    summary_parts.append(json.dumps(ctx[agent], ensure_ascii=False, indent=2))
+                    summary_parts.append(json.dumps(ctx[agent]["compressed"], ensure_ascii=False, indent=2))
 
             summary_input = "\n".join(summary_parts)
 
-            raw_summary = ask_gigachat("summary", summary_input)
+            raw_summary, summary_usage = ask_gigachat("summary", summary_input, track_usage=debug)
 
             try:
                 compressed_summary = json.loads(raw_summary)
@@ -881,19 +970,33 @@ async def board_chat(
                 logger.warning("Summary agent returned non-JSON: %s", raw_summary)
                 compressed_summary = {"overall_verdict": "NO-DATA", "raw_response": raw_summary}
 
-            expanded_summary = expand_agent_output("summary", compressed_summary)
+            expanded_summary, expander_summary_usage = expand_agent_output("summary", compressed_summary, track_usage=debug)
 
-            reply = AgentReply(
+            reply = AgentReplyV2(
                 agent="summary",
                 text=expanded_summary,
-                compressed=compressed_summary if debug else None
             )
+
+            if debug:
+                reply.compressed = compressed_summary
+                reply.meta = create_debug_metadata(
+                    agent="summary",
+                    compressed_output=compressed_summary,
+                    latency_ms=summary_usage.get("latency_ms", 0.0) + expander_summary_usage.get("latency_ms", 0.0),
+                    tokens_input=summary_usage.get("tokens_input", 0) + expander_summary_usage.get("tokens_input", 0),
+                    tokens_output=summary_usage.get("tokens_output", 0) + expander_summary_usage.get("tokens_output", 0),
+                    finish_reason=summary_usage.get("finish_reason", "unknown"),
+                )
+
             replies.append(reply)
 
     except Exception as e:
         logger.exception("Error while calling GigaChat board chain | user=%s", user_id)
         replies.append(
-            AgentReply(agent="error", text=f"Ошибка при обращении к GigaChat: {e}")
+            AgentReplyV2(
+                agent="error",
+                text=f"Ошибка при обращении к GigaChat: {e}",
+            )
         )
 
     logger.info(
@@ -903,34 +1006,21 @@ async def board_chat(
         debug,
     )
 
-    # Если debug=True, возвращаем расширенный ответ с отладкой
-    if debug:
-        valid_replies = [r for r in replies if r.agent != "error"]
-        return ChatResponseDebug(
-            user_message_original=user_msg,
-            user_message_compressed=compressed_user_msg.dict(),
-            agents_replies=[
-                AgentReplyWithDebug(
-                    agent=r.agent,
-                    text=r.text,
-                    compressed=r.compressed or {}
-                )
-                for r in valid_replies
-            ]
-        ).dict()
-
-    # Иначе возвращаем обычный список AgentReply (обратная совместимость)
-    return replies
+    return ChatResponseV2(
+        agents=replies,
+        user_message_compressed=compressed_user_msg.dict() if debug else None,
+        debug=debug,
+    )
 
 
-@app.post("/api/agent", response_model=SingleAgentReply)
+@app.post("/api/agent", response_model=AgentReplyV2)
 @limiter.limit("20/minute")
 async def single_agent(
     req: SingleAgentRequest,
     request: Request,
     user_id: str = Depends(verify_token),
-):
-    """Одиночный агент с компрессией."""
+) -> AgentReplyV2:
+    """Одиночный агент с отладкой."""
     logger.info(
         "Incoming /api/agent: agent=%s | message=%s | user=%s | debug=%s",
         req.agent,
@@ -940,7 +1030,7 @@ async def single_agent(
     )
 
     if req.agent not in AGENT_SYSTEM_PROMPTS:
-        return SingleAgentReply(text=f"Неизвестный агент: {req.agent}")
+        return AgentReplyV2(agent=req.agent, text=f"Неизвестный агент: {req.agent}")
 
     parts: List[str] = []
 
@@ -970,7 +1060,7 @@ async def single_agent(
     full_content = "\n".join(parts)
 
     try:
-        raw_response = ask_gigachat(req.agent, full_content)
+        raw_response, agent_usage = ask_gigachat(req.agent, full_content, track_usage=req.debug)
 
         try:
             compressed_response = json.loads(raw_response)
@@ -978,27 +1068,41 @@ async def single_agent(
             logger.warning("Agent %s returned non-JSON: %s", req.agent, raw_response)
             compressed_response = {"raw_response": raw_response}
 
-        expanded_text = expand_agent_output(req.agent, compressed_response)
+        expanded_text, expander_usage = expand_agent_output(req.agent, compressed_response, track_usage=req.debug)
 
-        return SingleAgentReply(
+        reply = AgentReplyV2(
+            agent=req.agent,
             text=expanded_text,
-            compressed=compressed_response if req.debug else None
         )
+
+        if req.debug:
+            reply.compressed = compressed_response
+            reply.meta = create_debug_metadata(
+                agent=req.agent,
+                compressed_output=compressed_response,
+                latency_ms=agent_usage.get("latency_ms", 0.0) + expander_usage.get("latency_ms", 0.0),
+                tokens_input=agent_usage.get("tokens_input", 0) + expander_usage.get("tokens_input", 0),
+                tokens_output=agent_usage.get("tokens_output", 0) + expander_usage.get("tokens_output", 0),
+                finish_reason=agent_usage.get("finish_reason", "unknown"),
+            )
+
+        return reply
     except Exception as e:
         logger.exception("Error in /api/agent | agent=%s | user=%s", req.agent, user_id)
-        return SingleAgentReply(
-            text=f"Ошибка при обращении к GigaChat для агента {req.agent}: {e}"
+        return AgentReplyV2(
+            agent=req.agent,
+            text=f"Ошибка при обращении к GigaChat для агента {req.agent}: {e}",
         )
 
 
-@app.post("/api/summary", response_model=SummaryReply)
+@app.post("/api/summary", response_model=AgentReplyV2)
 @limiter.limit("10/minute")
 async def recalc_summary(
     req: SummaryRequest,
     request: Request,
     user_id: str = Depends(verify_token),
-):
-    """Пересчёт итогов на основе последней истории обсуждения."""
+) -> AgentReplyV2:
+    """Пересчёт итогов."""
     logger.info(
         "Incoming /api/summary | history_len=%s | user=%s | debug=%s",
         len(req.history) if req.history else 0,
@@ -1009,7 +1113,8 @@ async def recalc_summary(
     compressed = compress_history(req.history, max_items=5)
 
     if not compressed:
-        return SummaryReply(
+        return AgentReplyV2(
+            agent="summary",
             text="Недостаточно истории для пересчёта итогов. Сначала проведите обсуждение."
         )
 
@@ -1021,7 +1126,7 @@ async def recalc_summary(
     )
 
     try:
-        raw_response = ask_gigachat("summary", summary_input)
+        raw_response, summary_usage = ask_gigachat("summary", summary_input, track_usage=req.debug)
 
         try:
             compressed_response = json.loads(raw_response)
@@ -1029,14 +1134,28 @@ async def recalc_summary(
             logger.warning("Summary returned non-JSON: %s", raw_response)
             compressed_response = {"raw_response": raw_response}
 
-        expanded_text = expand_agent_output("summary", compressed_response)
+        expanded_text, expander_usage = expand_agent_output("summary", compressed_response, track_usage=req.debug)
 
-        return SummaryReply(
+        reply = AgentReplyV2(
+            agent="summary",
             text=expanded_text,
-            compressed=compressed_response if req.debug else None
         )
+
+        if req.debug:
+            reply.compressed = compressed_response
+            reply.meta = create_debug_metadata(
+                agent="summary",
+                compressed_output=compressed_response,
+                latency_ms=summary_usage.get("latency_ms", 0.0) + expander_usage.get("latency_ms", 0.0),
+                tokens_input=summary_usage.get("tokens_input", 0) + expander_usage.get("tokens_input", 0),
+                tokens_output=summary_usage.get("tokens_output", 0) + expander_usage.get("tokens_output", 0),
+                finish_reason=summary_usage.get("finish_reason", "unknown"),
+            )
+
+        return reply
     except Exception as e:
         logger.exception("Error in /api/summary | user=%s", user_id)
-        return SummaryReply(
-            text=f"Ошибка при обращении к GigaChat для пересчёта итогов: {e}"
+        return AgentReplyV2(
+            agent="summary",
+            text=f"Ошибка при обращении к GigaChat для пересчёта итогов: {e}",
         )
