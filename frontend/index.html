@@ -51,15 +51,15 @@
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed;
-                top: 0;
+                top: 110px;
                 left: 0;
-                height: 100%;
+                height: calc(100% - 110px);
                 width: 80%;
                 transform: translateX(-100%);
                 z-index: 200;
                 box-shadow: 4px 0 16px rgba(0,0,0,0.1);
                 border-right: none;
-                padding-top: 70px;
+                padding-top: 20px;
             }
 
             .sidebar.open {
@@ -218,12 +218,14 @@
             z-index: 150;
             opacity: 0;
             transition: opacity 0.3s;
+            pointer-events: none;
         }
 
         @media (max-width: 768px) {
             .overlay.visible {
                 display: block;
                 opacity: 1;
+                pointer-events: auto;
             }
         }
 
@@ -513,17 +515,6 @@
                 display: flex;
             }
 
-            .sidebar {
-                position: absolute;
-                top: 0;
-                left: 0;
-                height: 100%;
-                transform: translateX(-100%); /* Hidden by default */
-                z-index: 30;
-                width: 80%; /* Takes most of screen */
-                box-shadow: 4px 0 16px rgba(0,0,0,0.1);
-            }
-
             .sidebar.open {
                 transform: translateX(0);
             }
@@ -531,6 +522,7 @@
             .overlay.visible {
                 display: block;
                 opacity: 1;
+                pointer-events: auto;
             }
 
             .chat-area {
