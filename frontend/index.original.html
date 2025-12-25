@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Board.AI — Совет директоров на GigaChat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            height: 85vh;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ===== DEBUG MODE VISUAL INDICATOR ===== */
+        body[data-debug="on"] .container {
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 3px #ffc107 !important;
+            transition: box-shadow 0.3s ease;
+        }
+
+        body[data-debug="on"] .debug-toggle {
+            background: #ffc107;
+            border-color: #ff9800;
+            animation: pulse-debug 1.5s infinite;
+        }
+
+        @keyframes pulse-debug {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        /* ===== SIDEBAR (DESKTOP) ===== */
+        .sidebar {
+            width: 280px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            z-index: 20;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 110px;
+                left: 0;
+                height: calc(100% - 110px);
+                width: 80%;
+                transform: translateX(-100%);
+                z-index: 200;
+                box-shadow: 4px 0 16px rgba(0,0,0,0.1);
+                border-right: none;
+                padding-top: 20px;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+        }
+
+        .agents-section h3 {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #666;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .agent-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 200ms;
+            background: white;
+            border: 1px solid #e9ecef;
+            user-select: none;
+        }
+
+        .agent-item:hover {
+            background: #f0f2f5;
+            border-color: #dee2e6;
+        }
+
+        .agent-item.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .agent-item input[type="checkbox"] {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .agent-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .agent-name {
+            font-size: 13px;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        /* ===== MOBILE HEADER & NAV ===== */
+        .mobile-header {
+            display: none;
+            height: 60px;
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .mobile-menu-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #333;
+            cursor: pointer;
+            padding: 8px;
+            line-height: 1;
+            min-width: 44px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .mobile-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+            flex: 1;
+            text-align: center;
+        }
+
+        /* Tab Navigation for Mobile */
+        .mobile-tabs {
+            display: none;
+            height: 50px;
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+            align-items: center;
+            padding: 0 8px;
+            overflow-x: auto;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 99;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .mobile-tab {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+            cursor: pointer;
+            min-width: 60px;
+        }
+
+        .mobile-tab.active {
+            opacity: 1;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .mobile-tab-icon {
+            font-size: 18px;
+        }
+        
+        .mobile-tab-label {
+            font-size: 10px;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 150;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .overlay.visible {
+                display: block;
+                opacity: 1;
+                pointer-events: auto;
+            }
+        }
+
+        /* ===== MAIN AREA ===== */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            height: 100%;
+        }
+
+        .chat-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #ffffff;
+            scroll-behavior: smooth;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #999;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .empty-state h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            max-width: 300px;
+            line-height: 1.5;
+        }
+
+        /* ===== MESSAGES ===== */
+        .message {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            line-height: 1.5;
+            font-size: 14px;
+            max-width: 90%;
+        }
+
+        .message.user {
+            background: #e7f3ff;
+            color: #0c5aa0;
+            margin-left: auto;
+            text-align: left;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.agent {
+            background: #f5f5f5;
+            color: #333;
+            margin-right: auto;
+            border-left: 4px solid #667eea;
+            border-bottom-left-radius: 2px;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: #667eea;
+        }
+
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .content-section {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .section-label {
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #8898aa;
+        }
+
+        .section-value {
+            color: #333;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge.go, .badge.fast, .badge.safe, .badge.scalable {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge.nogo, .badge.vulnerable, .badge.fatal {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge.slow, .badge.manual, .badge.fixable {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        /* Confidence Bar */
+        .confidence-bar {
+            width: 100%;
+            height: 18px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 600ms ease-out;
+        }
+
+        .confidence-text {
+            position: absolute;
+            left: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            z-index: 2;
+        }
+
+        /* ===== INPUT AREA ===== */
+        .input-area {
+            padding: 16px;
+            border-top: 1px solid #e9ecef;
+            background: #f8f9fa;
+            display: flex;
+            gap: 8px;
+            position: relative;
+            z-index: 5;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e9ecef;
+            border-radius: 20px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            max-height: 100px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #messageInput:focus {
+            border-color: #667eea;
+        }
+
+        #sendBtn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }
+
+        #sendBtn:hover:not(:disabled) {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+
+        #sendBtn:disabled {
+            background: #ccc;
+            cursor: default;
+        }
+
+        #sendBtn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+            margin-left: 2px;
+        }
+
+        /* Debug & Summary buttons in Sidebar */
+        .debug-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            cursor: pointer;
+            margin-top: auto;
+            transition: all 0.3s ease;
+        }
+
+        #summaryBtn {
+            width: 100%;
+            padding: 12px;
+            background: #764ba2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            margin-top: 10px;
+            transition: opacity 0.2s;
+            display: none;
+        }
+        
+        #summaryBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* ===== SKELETON LOADING ===== */
+        .skeleton {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+            width: 100%;
+        }
+
+        .skeleton-line {
+            height: 10px;
+            background: linear-gradient(90deg, #e9ecef 25%, #f0f2f5 50%, #e9ecef 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ===== RESPONSIVE STYLES ===== */
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+                align-items: flex-start;
+                background: #f0f2f5;
+            }
+
+            .container {
+                height: 100vh;
+                border-radius: 0;
+                flex-direction: column;
+            }
+
+            .mobile-header, .mobile-tabs {
+                display: flex;
+            }
+
+            .chat-area {
+                padding-top: 120px;
+                padding-bottom: 80px;
+            }
+
+            .message {
+                max-width: 95%;
+            }
+
+            .content-section {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .section-label {
+                min-width: auto;
+                margin-bottom: 2px;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .content-section {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+            
+            .section-label {
+                min-width: 100px;
+                padding-top: 2px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Mobile Header -->
+        <div class="mobile-header">
+            <button class="mobile-menu-btn" id="menuBtn">☰</button>
+            <div class="mobile-title">Board.AI</div>
+            <div style="width: 24px;"></div>
+        </div>
+
+        <!-- Mobile Tabs -->
+        <div class="mobile-tabs" id="mobileTabs"></div>
+
+        <!-- Sidebar / Drawer -->
+        <div class="overlay" id="overlay"></div>
+        <div class="sidebar" id="sidebar">
+            <div class="agents-section">
+                <h3>Члены совета</h3>
+                <div id="agentsList"></div>
+            </div>
+
+            <div class="debug-toggle">
+                <input type="checkbox" id="debugCheckbox">
+                <label for="debugCheckbox">🔧 Debug режим</label>
+            </div>
+
+            <div>
+                <button id="summaryBtn">📊 Обновить итоги</button>
+            </div>
+        </div>
+
+        <!-- Main Chat -->
+        <div class="main">
+            <div class="chat-area" id="chatArea">
+                <div class="empty-state">
+                    <h2>🎯 Board.AI</h2>
+                    <p>Совет директоров в вашем кармане.<br>Анализ идей и бизнес-решений.</p>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <textarea id="messageInput" placeholder="Опишите идею..." rows="1"></textarea>
+                <button id="sendBtn" disabled>
+                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== CONFIGURATION =====
+        let authToken = null;
+        let selectedAgents = new Set();
+        let chatHistory = [];
+        let isLoading = false;
+        let summaryShown = false;
+
+        const agents = {
+            "ceo": { name: "CEO", icon: "👔", color: "#667eea" },
+            "cfo": { name: "CFO", icon: "💰", color: "#764ba2" },
+            "cpo": { name: "CPO", icon: "🎯", color: "#f093fb" },
+            "marketing": { name: "Marketing", icon: "📢", color: "#4facfe" },
+            "skeptic": { name: "Skeptic", icon: "⚠️", color: "#fa709a" }
+        };
+
+        const agentKeys = Object.keys(agents);
+        
+        // DOM Elements
+        const chatArea = document.getElementById("chatArea");
+        const messageInput = document.getElementById("messageInput");
+        const sendBtn = document.getElementById("sendBtn");
+        const summaryBtn = document.getElementById("summaryBtn");
+        const debugCheckbox = document.getElementById("debugCheckbox");
+        const agentsList = document.getElementById("agentsList");
+        const mobileTabs = document.getElementById("mobileTabs");
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("overlay");
+        const menuBtn = document.getElementById("menuBtn");
+
+        // ===== INITIALIZATION =====
+        function init() {
+            renderAgentsUI();
+            setupEventListeners();
+            authenticateUser();
+            
+            // Default selection
+            agentKeys.forEach(key => selectedAgents.add(key));
+            updateUISelections();
+        }
+
+        // ===== RENDERING =====
+        function renderAgentsUI() {
+            agentsList.innerHTML = agentKeys.map(key => `
+                <div class="agent-item" data-agent="${key}">
+                    <input type="checkbox" data-agent="${key}" checked>
+                    <span class="agent-icon">${agents[key].icon}</span>
+                    <span class="agent-name">${agents[key].name}</span>
+                </div>
+            `).join("");
+
+            mobileTabs.innerHTML = agentKeys.map(key => `
+                <div class="mobile-tab active" data-agent="${key}">
+                    <span class="mobile-tab-icon">${agents[key].icon}</span>
+                    <span class="mobile-tab-label">${agents[key].name}</span>
+                </div>
+            `).join("");
+        }
+
+        function updateUISelections() {
+            document.querySelectorAll('.agent-item').forEach(item => {
+                const key = item.dataset.agent;
+                const checkbox = item.querySelector('input');
+                const isActive = selectedAgents.has(key);
+                
+                if (isActive) {
+                    item.classList.add('active');
+                    checkbox.checked = true;
+                } else {
+                    item.classList.remove('active');
+                    checkbox.checked = false;
+                }
+            });
+
+            document.querySelectorAll('.mobile-tab').forEach(tab => {
+                const key = tab.dataset.agent;
+                if (selectedAgents.has(key)) {
+                    tab.classList.add('active');
+                    tab.style.opacity = '1';
+                } else {
+                    tab.classList.remove('active');
+                    tab.style.opacity = '0.5';
+                }
+            });
+        }
+
+        function toggleAgent(agentKey) {
+            if (selectedAgents.has(agentKey)) {
+                selectedAgents.delete(agentKey);
+            } else {
+                selectedAgents.add(agentKey);
+            }
+            updateUISelections();
+        }
+
+        // ===== DEBUG LOGGING FUNCTION ✅ НОВОЕ =====
+        function logDebugMetadata(data, requestId) {
+            if (!data.debug) return;
+            
+            console.group(`🔧 DEBUG [${new Date().toISOString()}]`);
+            console.log('📌 Request ID:', requestId);
+            
+            if (data.user_message_compressed) {
+                console.log('📋 User Message Compressed:', data.user_message_compressed);
+            }
+            
+            console.group('👥 Agents Metadata:');
+            data.agents.forEach(agent => {
+                if (agent.meta) {
+                    console.group(`${agent.agent.toUpperCase()}`);
+                    console.log('⏱️  Latency:', `${agent.meta.latency_ms.toFixed(0)}ms`);
+                    console.log('🪙 Tokens:', {
+                        input: agent.meta.tokens_input,
+                        output: agent.meta.tokens_output,
+                        total: agent.meta.tokens_total
+                    });
+                    console.log('🤖 Model:', agent.meta.model);
+                    console.log('✅ Finish Reason:', agent.meta.finish_reason);
+                    console.log('📅 Timestamp:', agent.meta.timestamp);
+                    if (agent.compressed) {
+                        console.log('📦 Compressed Output:', agent.compressed);
+                    }
+                    console.groupEnd();
+                }
+            });
+            console.groupEnd();
+            
+            console.groupEnd();
+        }
+
+        // ===== EVENT LISTENERS =====
+        function setupEventListeners() {
+            document.querySelectorAll('.agent-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'INPUT') {
+                        toggleAgent(item.dataset.agent);
+                    }
+                });
+                
+                item.querySelector('input').addEventListener('change', () => {
+                   toggleAgent(item.dataset.agent); 
+                });
+            });
+
+            document.querySelectorAll('.mobile-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    toggleAgent(tab.dataset.agent);
+                });
+            });
+
+            menuBtn.addEventListener('click', () => {
+                sidebar.classList.add('open');
+                overlay.classList.add('visible');
+            });
+
+            overlay.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('visible');
+            });
+
+            messageInput.addEventListener("input", (e) => {
+                e.target.style.height = "auto";
+                e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
+                sendBtn.disabled = !e.target.value.trim();
+            });
+
+            messageInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            sendBtn.addEventListener("click", sendMessage);
+            summaryBtn.addEventListener("click", handleSummaryRequest);
+
+            // ✅ DEBUG MODE TOGGLE - НОВЫЙ EVENT LISTENER
+            debugCheckbox.addEventListener('change', () => {
+                const enabled = debugCheckbox.checked;
+                document.body.dataset.debug = enabled ? 'on' : 'off';
+                console.info(`🔧 Debug mode: ${enabled ? 'ON ✅' : 'OFF ❌'}`);
+                
+                if (enabled) {
+                    console.info('📊 Debug mode enabled. Metadata будет логироваться в console для каждого запроса.');
+                    console.info('🔍 Смотри: Request ID, latency, token counts, finish reasons для каждого агента.');
+                }
+            });
+        }
+
+        // ===== AUTHENTICATION =====
+        function authenticateUser() {
+            const existingToken = localStorage.getItem("authToken");
+            if (existingToken) {
+                authToken = existingToken;
+                console.info("✅ Сессия восстановлена");
+                return;
+            }
+            const userId = "user_" + Math.random().toString(36).substr(2, 9);
+            loginUser(userId);
+        }
+
+        async function loginUser(userId) {
+            try {
+                authToken = "mock_token_" + userId;
+                localStorage.setItem("authToken", authToken);
+                console.info(`✅ Новая сессия создана: ${userId}`);
+            } catch (err) {
+                console.error("❌ Ошибка входа:", err);
+                authToken = "mock_token_" + userId;
+            }
+        }
+
+        // ===== MESSAGING LOGIC =====
+        function parseAgentResponse(text, agentType) {
+            const lines = text.split('\n').filter(l => l.trim());
+            const sections = [];
+
+            lines.forEach(line => {
+                const match = line.match(/^\[?([^\]:]+)\]?\s*[—:-]\s*(.+)$/);
+                
+                if (!match) {
+                    if (line.length > 2) sections.push({ label: null, value: line, type: 'text' });
+                    return;
+                }
+
+                const label = match[1].trim().replace(/[*_]/g, '');
+                const value = match[2].trim();
+
+                let type = 'text';
+                let badgeType = null;
+
+                const lowerLabel = label.toLowerCase();
+                const upperVal = value.toUpperCase();
+
+                if (lowerLabel.includes('verdict') || lowerLabel.includes('risk') || lowerLabel.includes('status')) {
+                    if (['GO', 'FAST', 'SAFE', 'SCALABLE', 'FIXABLE'].includes(upperVal)) {
+                        type = 'badge';
+                        badgeType = upperVal.toLowerCase();
+                    } else if (['NO-GO', 'SLOW', 'VULNERABLE', 'MANUAL', 'FATAL'].includes(upperVal)) {
+                        type = 'badge';
+                        badgeType = upperVal.toLowerCase().replace('-', '');
+                    }
+                }
+                
+                if (lowerLabel.includes('confidence') && value.includes('%')) {
+                    type = 'progress';
+                }
+
+                if ((lowerLabel.includes('cost') || lowerLabel.includes('бюджет') || lowerLabel.includes('цена')) && 
+                    /[\d,]+\s*(руб|rub|usd|\$|₽|р\.)/.test(value.toLowerCase())) {
+                    type = 'currency';
+                }
+
+                sections.push({ label, value, type, badgeType });
+            });
+
+            return sections;
+        }
+
+        function addMessage(text, sender = 'user', agentType = null) {
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${sender}`;
+            
+            if (sender === 'agent' && agentType) {
+                messageEl.classList.add(agentType);
+                
+                const header = document.createElement('div');
+                header.className = 'message-header';
+                header.innerHTML = `
+                    <span class="agent-icon">${agents[agentType]?.icon || '🤖'}</span>
+                    <span>${agents[agentType]?.name || agentType}</span>
+                `;
+                messageEl.appendChild(header);
+                
+                const content = document.createElement('div');
+                content.className = 'message-content';
+                
+                const sections = parseAgentResponse(text, agentType);
+                
+                if (sections.length === 0) {
+                     const p = document.createElement('div');
+                     p.className = 'section-value';
+                     p.textContent = text;
+                     content.appendChild(p);
+                }
+
+                sections.forEach(section => {
+                    const sectionEl = document.createElement('div');
+                    sectionEl.className = `content-section`;
+                    
+                    if (section.label) {
+                        const labelEl = document.createElement('div');
+                        labelEl.className = 'section-label';
+                        labelEl.textContent = section.label;
+                        sectionEl.appendChild(labelEl);
+                    }
+                    
+                    const valueEl = document.createElement('div');
+                    valueEl.className = 'section-value';
+                    
+                    if (section.type === 'badge' && section.badgeType) {
+                        const badge = document.createElement('span');
+                        badge.className = `badge ${section.badgeType}`;
+                        badge.textContent = section.value;
+                        badge.setAttribute('role', 'status');
+                        badge.setAttribute('aria-label', `${section.label || 'Статус'}: ${section.value}`);
+                        valueEl.appendChild(badge);
+                    } else if (section.type === 'progress') {
+                        const percentMatch = section.value.match(/(\d+)%/);
+                        const percent = percentMatch ? parseInt(percentMatch[1], 10) : 0;
+                        
+                        const progressBar = document.createElement('div');
+                        progressBar.className = 'confidence-bar';
+                        progressBar.setAttribute('role', 'progressbar');
+                        progressBar.setAttribute('aria-valuenow', percent);
+                        progressBar.setAttribute('aria-valuemin', '0');
+                        progressBar.setAttribute('aria-valuemax', '100');
+                        progressBar.setAttribute('aria-label', `Уверенность: ${section.value}`);
+                        
+                        const fill = document.createElement('div');
+                        fill.className = 'confidence-fill';
+                        fill.style.width = '0%';
+                        
+                        const percentText = document.createElement('div');
+                        percentText.className = 'confidence-text';
+                        percentText.textContent = section.value;
+                        
+                        progressBar.appendChild(percentText);
+                        progressBar.appendChild(fill);
+                        valueEl.appendChild(progressBar);
+                        
+                        setTimeout(() => { fill.style.width = `${percent}%`; }, 100);
+                    } else if (section.type === 'currency') {
+                        const currencyEl = document.createElement('span');
+                        currencyEl.className = 'currency-value';
+                        currencyEl.style.fontWeight = '600';
+                        currencyEl.style.color = '#667eea';
+                        currencyEl.textContent = section.value;
+                        currencyEl.setAttribute('aria-label', `Сумма: ${section.value}`);
+                        valueEl.appendChild(currencyEl);
+                    } else {
+                        valueEl.textContent = section.value;
+                    }
+                    
+                    sectionEl.appendChild(valueEl);
+                    content.appendChild(sectionEl);
+                });
+                
+                messageEl.appendChild(content);
+            } else {
+                messageEl.textContent = text;
+            }
+            
+            const emptyState = chatArea.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+            
+            chatArea.appendChild(messageEl);
+            
+            setTimeout(() => {
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }, 50);
+
+            chatHistory.push(`${sender === 'user' ? 'User' : agentType}: ${text}`);
+        }
+
+        function addSkeleton() {
+            const skeleton = document.createElement('div');
+            skeleton.className = 'message agent skeleton-msg';
+            skeleton.innerHTML = `
+                <div class="skeleton">
+                    <div class="skeleton-line" style="width: 60%;"></div>
+                    <div class="skeleton-line" style="width: 90%;"></div>
+                    <div class="skeleton-line" style="width: 75%;"></div>
+                </div>
+            `;
+            chatArea.appendChild(skeleton);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            return skeleton;
+        }
+
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || isLoading) return;
+
+            addMessage(text, 'user');
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendBtn.disabled = true;
+            isLoading = true;
+            summaryShown = false;
+
+            const skeleton = addSkeleton();
+
+            try {
+                if (selectedAgents.size === 0) {
+                    skeleton.remove();
+                    addMessage("❌ Пожалуйста, выберите хотя бы одного агента", "agent", "system");
+                    isLoading = false;
+                    return;
+                }
+
+                const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+                const response = await fetch('/api/board', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                        'X-Request-ID': requestId
+                    },
+                    body: JSON.stringify({
+                        message: text,
+                        active_agents: Array.from(selectedAgents),
+                        history: chatHistory,
+                        mode: "initial",
+                        debug: debugCheckbox.checked,
+                        request_id: requestId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMsg = errorData.detail || `API ошибка ${response.status}`;
+                    throw new Error(errorMsg);
+                }
+
+                skeleton.remove();
+                const data = await response.json();
+
+                if (!data.agents || !Array.isArray(data.agents)) {
+                    throw new Error('Неверный формат ответа от сервера');
+                }
+
+                const responseTime = Date.now() - parseInt(requestId.split('_')[1]);
+                console.info(`📊 Response time: ${responseTime}ms`, {
+                    agentCount: data.agents.length,
+                    requestId: requestId
+                });
+
+                if (data.agents.length === 0) {
+                    throw new Error('Сервер вернул пустой ответ');
+                }
+
+                // ✅ ОБРАБОТКА DEBUG METADATA - НОВОЕ
+                if (data.debug === true) {
+                    logDebugMetadata(data, requestId);
+                }
+
+                data.agents.forEach(agentReply => {
+                    if (agentReply.agent && agentReply.text) {
+                        addMessage(agentReply.text, 'agent', agentReply.agent);
+                        
+                        if (agentReply.agent === 'summary') {
+                            summaryShown = true;
+                        }
+                    }
+                });
+
+                isLoading = false;
+                if (!summaryShown) {
+                    summaryBtn.style.display = 'block';
+                } else {
+                    summaryBtn.style.display = 'none';
+                }
+
+            } catch (err) {
+                console.error("Критическая ошибка:", err);
+                skeleton.remove();
+                
+                let userMessage = "❌ Ошибка: не удалось получить ответ";
+                if (err.message.includes('NetworkError')) {
+                    userMessage = "❌ Проблема с сетью. Проверьте подключение.";
+                } else if (err.message.includes('timeout')) {
+                    userMessage = "❌ Запрос истёк. Сервер не ответил вовремя.";
+                } else if (err.message) {
+                    userMessage = `❌ ${err.message}`;
+                }
+                
+                addMessage(userMessage, 'agent', 'system');
+                isLoading = false;
+            }
+        }
+
+        async function handleSummaryRequest() {
+            if (isLoading) return;
+            isLoading = true;
+            const skeleton = addSkeleton();
+            
+            try {
+                if (chatHistory.length === 0) {
+                    skeleton.remove();
+                    addMessage("❌ История пуста. Начните беседу, чтобы получить итоги.", 'agent', 'system');
+                    isLoading = false;
+                    return;
+                }
+
+                const requestId = `summary_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+                const response = await fetch('/api/board', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                        'X-Request-ID': requestId
+                    },
+                    body: JSON.stringify({
+                        message: "",
+                        active_agents: Array.from(selectedAgents),
+                        history: chatHistory,
+                        mode: "refresh",
+                        debug: debugCheckbox.checked,
+                        request_id: requestId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMsg = errorData.detail || `Summary API ошибка ${response.status}`;
+                    throw new Error(errorMsg);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.agents || !Array.isArray(data.agents)) {
+                    throw new Error('Неверный формат ответа от сервера');
+                }
+
+                // ✅ ОБРАБОТКА DEBUG METADATA - НОВОЕ
+                if (data.debug === true) {
+                    logDebugMetadata(data, requestId);
+                }
+
+                const summaryReply = data.agents.find(r => r.agent === 'summary');
+                if (summaryReply && summaryReply.text) {
+                    skeleton.remove();
+                    addMessage(summaryReply.text, 'agent', 'summary');
+                } else {
+                    skeleton.remove();
+                    addMessage("❌ Не удалось получить итоги", 'agent', 'system');
+                }
+                
+                sidebar.classList.remove('open');
+                overlay.classList.remove('visible');
+                summaryBtn.style.display = 'none';
+                
+                isLoading = false;
+            } catch (err) {
+                console.error("Summary ошибка:", err);
+                skeleton.remove();
+                
+                let userMessage = "❌ Ошибка при пересчёте итогов";
+                if (err.message.includes('пусто')) {
+                    userMessage = err.message;
+                } else if (err.message) {
+                    userMessage = `❌ ${err.message}`;
+                }
+                
+                addMessage(userMessage, 'agent', 'system');
+                isLoading = false;
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
