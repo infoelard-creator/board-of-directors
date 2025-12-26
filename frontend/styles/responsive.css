@@ -1,0 +1,195 @@
+/* ===== RESPONSIVE CSS - МОБИЛЬНЫЕ СТИЛИ ===== */
+
+/* ===== MOBILE HEADER ===== */
+.mobile-header {
+    display: none;
+    height: 60px;
+    background: #fff;
+    border-bottom: 1px solid #e9ecef;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-menu-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: #333;
+    cursor: pointer;
+    padding: 8px;
+    line-height: 1;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.mobile-menu-btn:active {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+}
+
+.mobile-title {
+    font-weight: 600;
+    font-size: 16px;
+    color: #333;
+    flex: 1;
+    text-align: center;
+}
+
+/* ===== MOBILE TABS ===== */
+.mobile-tabs {
+    display: none;
+    height: 50px;
+    background: #fff;
+    border-bottom: 1px solid #e9ecef;
+    align-items: center;
+    padding: 0 8px;
+    overflow-x: auto;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 99;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mobile-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+    cursor: pointer;
+    min-width: 60px;
+    user-select: none;
+}
+
+.mobile-tab:active {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.mobile-tab.active {
+    opacity: 1;
+    border-bottom: 2px solid #667eea;
+}
+
+.mobile-tab-icon {
+    font-size: 18px;
+}
+
+.mobile-tab-label {
+    font-size: 10px;
+    margin-top: 2px;
+    font-weight: 500;
+}
+
+/* ===== OVERLAY (для sidebar на мобилке) ===== */
+.overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 150;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.overlay.visible {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+@media (max-width: 768px) {
+    body {
+        padding: 0;
+        align-items: flex-start;
+        background: #f0f2f5;
+    }
+
+    .container {
+        height: 100vh;
+        border-radius: 0;
+        flex-direction: column;
+    }
+
+    /* Показываем мобильные элементы */
+    .mobile-header,
+    .mobile-tabs {
+        display: flex;
+    }
+
+    /* Трансформируем sidebar в drawer */
+    .sidebar {
+        position: fixed;
+        top: 110px;
+        left: 0;
+        height: calc(100% - 110px);
+        width: 80%;
+        transform: translateX(-100%);
+        z-index: 200;
+        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.1);
+        border-right: none;
+        padding-top: 20px;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Добавляем паддинг для чата под мобильной навигацией */
+    .chat-area {
+        padding-top: 120px;
+        padding-bottom: 80px;
+    }
+
+    /* Сообщения на мобилке уже */
+    .message {
+        max-width: 95%;
+    }
+
+    /* На мобилке секции по вертикали */
+    .content-section {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .section-label {
+        min-width: auto;
+        margin-bottom: 2px;
+    }
+}
+
+/* Desktop breakpoint */
+@media (min-width: 769px) {
+    .content-section {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .section-label {
+        min-width: 100px;
+        padding-top: 2px;
+    }
+}

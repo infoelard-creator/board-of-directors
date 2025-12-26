@@ -1,0 +1,52 @@
+/* ===== ANIMATIONS CSS - АНИМАЦИИ И ПЕРЕХОДЫ ===== */
+
+/* ===== SKELETON LOADING ===== */
+.skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+    width: 100%;
+}
+
+.skeleton-line {
+    height: 10px;
+    background: linear-gradient(90deg, #e9ecef 25%, #f0f2f5 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* ===== TRANSITIONS ===== */
+/* Плавные переходы для кнопок и элементов */
+button,
+input,
+textarea,
+.agent-item,
+.mobile-tab {
+    transition: all 0.2s ease;
+}
+
+/* ===== FOCUS STATES ===== */
+button:focus,
+input:focus,
+textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4);
+}
+
+/* ===== ACTIVE STATES ===== */
+button:active,
+.agent-item:active,
+.mobile-tab:active {
+    transform: scale(0.98);
+}
