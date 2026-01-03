@@ -21,11 +21,11 @@ import { sendBoardRequest } from './api.js';
 
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 
-function init() {
+async function init() {
     logSafe('info', '🚀 Initializing Board.AI...');
 
     // 1. Auth: восстанавливаем токен или создаём новый
-    authenticateUser();
+    await authenticateUser();
 
     // 2. UI Setup: рендеруем агентов, слушаем события
     renderAgentsUI();
