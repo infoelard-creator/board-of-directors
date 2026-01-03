@@ -1,10 +1,13 @@
 import os
+from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from pydantic import BaseModel
+
+load_dotenv()
 
 # ✅ FIX B4: ОБЯЗАТЕЛЬНАЯ ПЕРЕМЕННАЯ ОКРУЖЕНИЯ ДЛЯ JWT СЕКРЕТА
 # Если не задана → приложение падает при старте с понятной ошибкой
