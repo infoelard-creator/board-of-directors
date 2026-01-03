@@ -4,3 +4,46 @@ __pycache__/
 *.log
 logs/
 .env
+# Environment variables
+.env
+.env.local
+
+# Virtual environment
+venv/
+ENV/
+env/
+
+# Logs
+logs/
+*.log
+
+# Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQLite
+*.db
+test.db
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json

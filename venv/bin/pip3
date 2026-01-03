@@ -1,4 +1,4 @@
-#!/home/user1/board/venv/bin/python3
+#!/workspaces/board-of-directors/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
