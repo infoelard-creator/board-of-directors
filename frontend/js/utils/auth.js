@@ -1,5 +1,4 @@
 // ===== АУТЕНТИФИКАЦИЯ / СЕССИЯ ДЛЯ BOARD.AI =====
-// Логика вокруг authToken и userId — то, что раньше было authenticateUser / loginUser
 
 import { appState } from '../state.js';
 import { generateUserId, logSafe } from './helpers.js';
@@ -10,18 +9,36 @@ import { generateUserId, logSafe } from './helpers.js';
  * - если нет — запрашивает реальный JWT от /api/login
  */
 export async function authenticateUser() {
+    // 🧹 Удаляем старые mock-токены если они есть
+    try {
+        const oldToken = localStorage.getItem('authToken');
+        if (oldToken && oldToken.startsWith('mock_token_')) {
+            logSafe('warn', '🧹 Removing legacy mock_token from localStorage');
+            localStorage.removeItem('authToken');
+        }
+    } catch (e) {
+        logSafe('warn', 'Could not clean legacy token', e);
+    }
+
     const restored = appState.restoreAuthToken();
     if (restored) {
         logSafe('info', '✅ Сессия восстановлена из localStorage');
         return;
     }
 
+    await getNewToken();
+}
+
+/**
+ * Получает новый JWT токен от /api/login
+ * Используется при первой авторизации и при рефреше
+ */
+async function getNewToken() {
     try {
         const userId = generateUserId();
         
         logSafe('info', `📤 Запрашиваем JWT для ${userId}...`);
         
-        // Запрашиваем реальный JWT от бэкенда
         const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -33,7 +50,7 @@ export async function authenticateUser() {
         }
 
         const data = await response.json();
-        const token = data.access_token; // Достаём реальный JWT
+        const token = data.access_token;
 
         if (!token) {
             throw new Error('❌ Сервер не вернул access_token');
@@ -41,11 +58,11 @@ export async function authenticateUser() {
 
         appState.setAuthToken(token);
         logSafe('info', `✅ Авторизация успешна для ${userId}`);
+        return token;
 
     } catch (err) {
         logSafe('error', '❌ Не удалось авторизоваться', err.message);
         
-        // Показываем ошибку в UI
         const chatArea = document.querySelector('#chatArea');
         if (chatArea) {
             chatArea.innerHTML = `<div style="color: #e74c3c; padding: 20px; text-align: center; font-size: 16px;">
@@ -55,8 +72,17 @@ export async function authenticateUser() {
             </div>`;
         }
         
-        throw err; // Пробросим ошибку дальше, чтобы app.js смог её обработать
+        throw err;
     }
+}
+
+/**
+ * Рефрешит токен при истечении или 401 ошибке
+ * Используется в api.js при перехвате 401
+ */
+export async function refreshAuthToken() {
+    logSafe('warn', '🔄 Токен истёк или невалиден, запрашиваем новый...');
+    return await getNewToken();
 }
 
 /**
@@ -67,7 +93,7 @@ export function getAuthToken() {
 }
 
 /**
- * Хард-ресет сессии (если когда-нибудь понадобится)
+ * Хард-ресет сессии
  */
 export function resetAuthSession() {
     try {
@@ -77,5 +103,5 @@ export function resetAuthSession() {
     }
     appState.setAuthToken(null);
     appState.resetAll();
-    logSafe('info', '👋 Сессия сброшена');
+    logSafe('info', '�� Сессия сброшена');
 }
