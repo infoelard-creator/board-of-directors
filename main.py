@@ -8,7 +8,7 @@ import json
 import requests
 from threading import Lock  
 from fastapi import FastAPI, Request, Depends
-from auth import create_access_token, verify_token, TokenResponse
+from auth import create_access_token, verify_token, verify_refresh_token, TokenResponse, AccessTokenResponse, RefreshTokenRequest
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -665,11 +665,32 @@ async def login(
     body: LoginRequest,
     db: Session = Depends(get_db),
 ):
-    """Логин: принимает user_id, создаёт пользователя, возвращает JWT."""
+    """Логин: принимает user_id, создаёт пользователя, возвращает пару токенов."""
     create_user_if_not_exists(db, body.user_id)
-    token = create_access_token(body.user_id)
-    return TokenResponse(access_token=token)
+    token_pair = create_token_pair(body.user_id)
+    logger.info(f"User {body.user_id} logged in, issued token pair")
+    return token_pair
 
+
+
+@app.post("/api/refresh", response_model=AccessTokenResponse)
+async def refresh_access_token(body: RefreshTokenRequest):
+    """
+    Обновление access_token используя refresh_token.
+    Вызывается клиентом когда access_token истекает.
+    """
+    # Проверяем refresh_token
+    user_id = verify_refresh_token(body.refresh_token)
+    
+    # Выдаем новый access_token
+    new_access_token = create_access_token(user_id)
+    
+    logger.info(f"User {user_id} refreshed access token")
+    
+    return AccessTokenResponse(
+        access_token=new_access_token,
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
 
 @app.post("/api/board", response_model=ChatResponseV2)
 @limiter.limit("10/minute")
