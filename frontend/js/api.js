@@ -118,6 +118,15 @@ export async function sendBoardRequest(message, mode = 'initial') {
                 
             } catch (refreshErr) {
                 logSafe('error', `❌ Refresh failed [${requestId}]`, refreshErr.message);
+                
+                // При ошибке refresh — очищаем токены и перезагружаем
+                logSafe('warn', '🔄 Очищаем токены и перезагружаем страницу...');
+                resetAuthSession();
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+                
                 throw new Error(`Ошибка переавторизации: ${refreshErr.message}`);
             }
         }
