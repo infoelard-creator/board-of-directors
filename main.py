@@ -8,7 +8,7 @@ import json
 import requests
 from threading import Lock  
 from fastapi import FastAPI, Request, Depends
-from auth import create_access_token, verify_token, verify_refresh_token, TokenResponse, AccessTokenResponse, RefreshTokenRequest
+from auth import create_access_token, create_token_pair, verify_token, verify_refresh_token, TokenResponse, AccessTokenResponse, RefreshTokenRequest
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
