@@ -5,29 +5,41 @@ import { generateUserId, logSafe } from './helpers.js';
 
 /**
  * Инициализирует сессию пользователя:
- * - пробует восстановить токен из localStorage
+ * - СНАЧАЛА проверяет и удаляет старые mock-токены
+ * - потом пробует восстановить валидный токен
  * - если нет — запрашивает реальный JWT от /api/login
  */
 export async function authenticateUser() {
-    // 🧹 Удаляем старые mock-токены если они есть
+    logSafe('info', '🔍 [AUTH] authenticateUser() called');
+    
+    // 🧹 КРИТИЧНО: Удаляем старые mock-токены ДО любого восстановления
     try {
         const oldToken = localStorage.getItem('authToken');
+        logSafe('info', `🔍 [AUTH] Token from localStorage: ${oldToken ? oldToken.substring(0, 20) + '...' : 'null'}`);
+        
         if (oldToken && oldToken.startsWith('mock_token_')) {
-            logSafe('warn', '🧹 Removing legacy mock_token from localStorage');
+            logSafe('warn', '🧹 [AUTH] REMOVING legacy mock_token from localStorage');
             localStorage.removeItem('authToken');
+            logSafe('info', '🧹 [AUTH] ✅ mock_token REMOVED');
         }
     } catch (e) {
-        logSafe('warn', 'Could not clean legacy token', e);
+        logSafe('warn', '[AUTH] Could not clean legacy token', e);
     }
 
+    // Теперь восстанавливаем (если есть валидный токен)
     const restored = appState.restoreAuthToken();
+    logSafe('info', `🔍 [AUTH] restoreAuthToken() returned: ${restored}`);
+    
     if (restored) {
-        logSafe('info', '✅ Сессия восстановлена из localStorage');
+        const token = appState.getAuthToken();
+        logSafe('info', `✅ [AUTH] Сессия восстановлена: ${token ? token.substring(0, 20) + '...' : 'null'}`);
         return;
     }
 
+    logSafe('info', '🔍 [AUTH] No valid token in localStorage, requesting new JWT...');
     await getNewToken();
 }
+
 
 /**
  * Получает новый JWT токен от /api/login
