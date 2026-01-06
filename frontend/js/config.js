@@ -91,3 +91,55 @@ export const REGEX = {
 }; 
 
 console.log('✅ Config module loaded');
+// ===== THERAPY КОНФИГУРАЦИЯ =====
+export const API_ENDPOINT = '/api';  // Base API endpoint (используется в therapy-api.js)
+
+export const RATE_LIMIT_THERAPY_CHAT = {
+    maxPerMinute: 10,
+    maxPerHour: 100
+};
+
+export const THERAPY_CONFIG = {
+    // UI параметры
+    maxInsightsVisible: 5,           // Сколько insights показать без скроллинга
+    maxHypothesesVisible: 3,         // Сколько hypotheses показать без скроллинга
+    confidenceReadyForBoard: 85,     // Минимальный confidence для готовности к Board
+    
+    // Стили
+    therapyMessageClass: 'therapy-message',
+    therapyPanelClass: 'therapy-panel',
+    therapyInsightClass: 'therapy-insight',
+    therapyHypothesisClass: 'therapy-hypothesis',
+    therapyBubbleContainerClass: 'therapy-bubbles',
+    
+    // Иконки и эмодзи
+    icons: {
+        sendToBoard: '📌',
+        formulate: '💭',
+        continue: '❓',
+        therapist: '🧠',
+        insights: '💡',
+        hypotheses: '🎯'
+    }
+};
+
+// ===== THERAPY DOM СЕЛЕКТОРЫ =====
+export const THERAPY_SELECTORS = {
+    therapyPanel: '#therapyPanel',
+    therapyInsightsList: '#therapyInsightsList',
+    therapyHypothesesList: '#therapyHypothesesList',
+    therapyBubblesContainer: '#therapyBubblesContainer',
+    therapyToggleBtn: '#therapyTogglePanelBtn'
+};
+
+// ===== THERAPY CSS КЛАССЫ =====
+export const THERAPY_CSS_CLASSES = {
+    panelVisible: 'visible',
+    insightWithDelete: 'has-delete-btn',
+    hypothesisActive: 'active',
+    bubbleReady: 'ready',
+    mobileDrawerOpen: 'drawer-open',
+    therapyMode: 'therapy-mode'
+};
+
+console.log('✅ Config module loaded with Therapy constants');

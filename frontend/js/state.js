@@ -11,6 +11,13 @@ class BoardState {
         this.isLoading = false;
         this.summaryShown = false;
         this.debugMode = false;
+        
+        // ===== THERAPY PROPERTIES =====
+        this.therapySessionId = null;
+        this.therapyMode = false;
+        this.therapyInsights = [];
+        this.therapyHypotheses = [];
+        this.therapyReadyForBoard = false;
     }
 
     // ===== AUTH =====
@@ -116,6 +123,92 @@ class BoardState {
 
     isDebugEnabled() {
         return this.debugMode;
+    }
+
+
+    // ===== THERAPY STATE =====
+    // Управление сессией терапии и данными
+
+    setTherapySessionId(sessionId) {
+        this.therapySessionId = sessionId;
+    }
+
+    getTherapySessionId() {
+        return this.therapySessionId;
+    }
+
+    setTherapyMode(flag) {
+        this.therapyMode = flag;
+    }
+
+    isTherapyMode() {
+        return this.therapyMode;
+    }
+
+    // Insights
+    setTherapyInsights(insights) {
+        this.therapyInsights = insights || [];
+    }
+
+    getTherapyInsights() {
+        return this.therapyInsights;
+    }
+
+    addTherapyInsight(insight) {
+        this.therapyInsights.push(insight);
+    }
+
+    removeTherapyInsightById(insightId) {
+        this.therapyInsights = this.therapyInsights.filter(
+            insight => insight.id !== insightId
+        );
+    }
+
+    getTherapyInsightsCount() {
+        return this.therapyInsights.length;
+    }
+
+    // Hypotheses
+    setTherapyHypotheses(hypotheses) {
+        this.therapyHypotheses = hypotheses || [];
+    }
+
+    getTherapyHypotheses() {
+        return this.therapyHypotheses;
+    }
+
+    getTherapyHypothesesSorted() {
+        // Сортируем по confidence (убывание)
+        return [...this.therapyHypotheses].sort(
+            (a, b) => (b.confidence || 0) - (a.confidence || 0)
+        );
+    }
+
+    getBestHypothesis() {
+        const sorted = this.getTherapyHypothesesSorted();
+        return sorted.length > 0 ? sorted[0] : null;
+    }
+
+    getTherapyHypothesesCount() {
+        return this.therapyHypotheses.length;
+    }
+
+    // Ready for board
+    setTherapyReadyForBoard(flag) {
+        this.therapyReadyForBoard = flag;
+    }
+
+    isTherapyReadyForBoard() {
+        return this.therapyReadyForBoard;
+    }
+
+    // ===== RESET THERAPY STATE =====
+    resetTherapyState() {
+        this.therapySessionId = null;
+        this.therapyMode = false;
+        this.therapyInsights = [];
+        this.therapyHypotheses = [];
+        this.therapyReadyForBoard = false;
     }
 
     // ===== RESET ВСЕГО СОСТОЯНИЯ =====

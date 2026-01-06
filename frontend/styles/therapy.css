@@ -1,0 +1,316 @@
+/* ===== THERAPY MODE STYLES ===== */
+/* Стили для режима Терапии */
+
+/* ===== THERAPY PANEL ===== */
+.therapy-panel {
+    width: 280px;
+    padding: 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    color: #fff;
+    max-height: 70vh;
+    overflow-y: auto;
+    transition: all 0.3s ease;
+}
+
+.therapy-panel.visible {
+    display: flex;
+    flex-direction: column;
+}
+
+.therapy-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.therapy-panel-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.therapy-toggle-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.2s ease;
+}
+
+.therapy-toggle-btn:hover {
+    transform: scale(1.2);
+}
+
+.therapy-panel-content {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.therapy-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 16px 0;
+}
+
+/* ===== INSIGHTS ===== */
+.therapy-insights-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.therapy-insight {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.2s ease;
+}
+
+.therapy-insight:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-left-color: #fff;
+}
+
+.therapy-insight-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.therapy-insight-text {
+    font-size: 13px;
+    line-height: 1.4;
+    color: #fff;
+    flex: 1;
+}
+
+.therapy-insight-delete-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.therapy-insight-delete-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.therapy-confidence-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.therapy-confidence-fill {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 4px;
+    transition: width 0.3s ease;
+}
+
+.therapy-confidence-text {
+    font-size: 10px;
+    color: #fff;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== HYPOTHESES ===== */
+.therapy-hypotheses-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.therapy-hypotheses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.therapy-hypothesis {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.therapy-hypothesis:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-left-color: #fff;
+    transform: translateX(4px);
+}
+
+.therapy-hypothesis-content {
+    margin-bottom: 8px;
+}
+
+.therapy-hypothesis-text {
+    font-size: 13px;
+    line-height: 1.4;
+    color: #fff;
+    display: block;
+}
+
+.therapy-empty {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    text-align: center;
+    padding: 20px 0;
+}
+
+/* ===== THERAPY MESSAGE IN CHAT ===== */
+.message.therapy-message {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-left: 3px solid #667eea;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.message.therapy-message .message-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #667eea;
+}
+
+.message.therapy-message .agent-icon {
+    font-size: 20px;
+}
+
+.message.therapy-message .agent-name {
+    font-size: 14px;
+}
+
+.message.therapy-message .message-body {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #333;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Dark mode для Therapy message */
+@media (prefers-color-scheme: dark) {
+    .message.therapy-message {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+        border-left-color: #8b9dfe;
+    }
+
+    .message.therapy-message .message-header {
+        color: #8b9dfe;
+    }
+
+    .message.therapy-message .message-body {
+        color: #e0e0e0;
+    }
+}
+
+/* ===== THERAPY BUBBLES ===== */
+.therapy-bubbles {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 12px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.therapy-bubble {
+    padding: 10px 16px;
+    border: 1px solid #667eea;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    color: #667eea;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.therapy-bubble:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.therapy-bubble:active {
+    transform: translateY(0);
+}
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .therapy-panel {
+        position: fixed;
+        top: 0;
+        right: -280px;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        z-index: 99;
+        transition: right 0.3s ease;
+    }
+
+    .therapy-panel.visible {
+        right: 0;
+    }
+
+    .therapy-bubbles {
+        flex-direction: column;
+    }
+
+    .therapy-bubble {
+        width: 100%;
+    }
+}
+
+/* ===== ANIMATION ===== */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.therapy-panel {
+    animation: slideInRight 0.3s ease;
+}
+
+console.log('✅ Therapy Styles loaded');
