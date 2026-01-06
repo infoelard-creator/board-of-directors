@@ -15,12 +15,7 @@ from app.core.logger import logger
 from app.core.config import RATE_LIMIT_BOARD_CHAT
 from app.schemas import ChatRequest
 from app.llm import ask_gigachat
-from app.services.prompts import (
-    AGENT_PARAMS,
-    THERAPY_SYSTEM_PROMPT,
-    HYPOTHESIS_GENERATOR_SYSTEM_PROMPT,
-    HYPOTHESIS_DEDUPLICATOR_SYSTEM_PROMPT,
-)
+from app.services.prompts import AGENT_PARAMS, THERAPY_SYSTEM_PROMPT
 from db import (
     SessionLocal,
     get_db,
@@ -84,8 +79,7 @@ def get_therapy_context(session: TherapySession, max_recent_messages: int = 10) 
     1. Исходная проблема
     2. Ключевые знания (отсортированы по importance)
     3. Удаленные знания (для анализа Терапевтом)
-    4. ТЕКУЩИЕ ГИПОТЕЗЫ (отсортированы по confidence)
-    5. Последние N сообщений из истории
+    4. Последние N сообщений из истории
     """
     parts = []
     
@@ -107,17 +101,7 @@ def get_therapy_context(session: TherapySession, max_recent_messages: int = 10) 
         for insight in deleted_insights:
             parts.append(f"- {insight.insight_summary}")
     
-    # 4. ТЕКУЩИЕ ГИПОТЕЗЫ - отсортированы по confidence (убывание), топ-10
-    active_hypotheses = [h for h in session.hypotheses if h.is_active and not h.is_selected_by_user]
-    if active_hypotheses:
-        sorted_hypotheses = sorted(active_hypotheses, key=lambda x: x.confidence or 0, reverse=True)
-        top_hypotheses = sorted_hypotheses[:10]
-        
-        parts.append("\nТЕКУЩИЕ ГИПОТЕЗЫ (отсортированы по confidence):")
-        for idx, hyp in enumerate(top_hypotheses, 1):
-            parts.append(f"{idx}. [{hyp.id[:8]}] {hyp.hypothesis_text} (confidence: {hyp.confidence}%)")
-    
-    # 5. Последние N сообщений
+    # 4. Последние N сообщений
     recent_messages = sorted(session.messages, key=lambda x: x.created_at)[-max_recent_messages:]
     if recent_messages:
         parts.append(f"\nПОСЛЕДНИЕ {len(recent_messages)} СООБЩЕНИЙ:")
@@ -254,127 +238,41 @@ async def therapy_chat(
     db.add(therapist_message_obj)
     db.commit()
     
-    # ===== ЭТАП 5: ГЕНЕРАТОР ГИПОТЕЗ (новые + обновлённые) =====
+    # ===== ЭТАП 5: ГЕНЕРИРОВАТЬ ГИПОТЕЗЫ (ВАРИАНТ B) =====
     
-    # Перезагружаем сессию чтобы получить обновлённые данные (инсайты, старые гипотезы)
-    db.refresh(session)
-    
-    # Пересобираем контекст (теперь с новым инсайтом если был)
-    context = get_therapy_context(session)
-    
+    # Вызываем Терапевта еще раз для генерации гипотез
     hypothesis_input = f"""{context}
 
 Текущий ответ пользователя: {user_msg}
 
-На основе всей информации выше, проанализируй:
-1. Какие текущие гипотезы нужно обновить по confidence?
-2. Какие НОВЫЕ гипотезы возникают?
+На основе всей информации выше, сформулируй 3-5 гипотез о том, какую проблему хочет решить пользователь.
+Для каждой гипотезы указать:
+1. hypothesis_text — понятное описание (2-3 предложения)
+2. confidence — 0-100, насколько уверен
+3. json_format — JSON для отправки на Board (заполнить позже)
 
-Помни: твоя задача не дублировать, а ОБНОВЛЯТЬ и ГЕНЕРИРОВАТЬ."""
+Выдай JSON список."""
     
-    gen_response_raw, _ = ask_gigachat("therapy_hypothesis_generator", hypothesis_input)
+    hypotheses_raw, _ = ask_gigachat("therapy_hypothesis_generator", hypothesis_input)
     
-    logger.info(
-        "Generator responded | session_id=%s | response_len=%d",
-        session_id,
-        len(gen_response_raw),
-    )
-    
-    # Парсим ответ Генератора
-    updated_hypotheses = []
-    new_hypotheses = []
     try:
-        gen_response = json.loads(gen_response_raw)
-        updated_hypotheses = gen_response.get("updated_hypotheses", [])
-        new_hypotheses = gen_response.get("new_hypotheses", [])
-        
-        logger.info(
-            "Generator parsed | updated=%d | new=%d",
-            len(updated_hypotheses),
-            len(new_hypotheses),
-        )
-    except json.JSONDecodeError as e:
-        logger.warning("Generator returned non-JSON: %s", e)
-    
-    # ===== ЭТАП C: ДЕДУПЛИКАТОР (финальный список) =====
-    
-    dedup_input = f"""ОБНОВЛЁННЫЕ СТАРЫЕ ГИПОТЕЗЫ:
-{json.dumps(updated_hypotheses, ensure_ascii=False, indent=2)}
-
-НОВЫЕ ГИПОТЕЗЫ:
-{json.dumps(new_hypotheses, ensure_ascii=False, indent=2)}
-
-Выполни дедупликацию и верни финальный список."""
-    
-    dedup_response_raw, _ = ask_gigachat("therapy_hypothesis_deduplicator", dedup_input)
-    
-    logger.info(
-        "Deduplicator responded | session_id=%s | response_len=%d",
-        session_id,
-        len(dedup_response_raw),
-    )
-    
-    # Парсим ответ Дедупликатора
-    final_hypotheses = []
-    try:
-        dedup_response = json.loads(dedup_response_raw)
-        final_hypotheses = dedup_response.get("hypotheses", [])
-        
-        logger.info(
-            "Deduplicator parsed | final=%d hypotheses",
-            len(final_hypotheses),
-        )
-    except json.JSONDecodeError as e:
-        logger.warning("Deduplicator returned non-JSON: %s", e)
-    
-    # ===== ЭТАП 5B: СОХРАНИТЬ ГИПОТЕЗЫ В БД =====
-    
-    # Получаем текущие ID гипотез для обновления
-    existing_hyp_ids = {h.id for h in session.hypotheses}
-    
-    for final_hyp in final_hypotheses:
-        hyp_id = final_hyp.get("id")
-        hyp_text = final_hyp.get("hypothesis_text", "")
-        hyp_confidence = final_hyp.get("confidence", 50)
-        is_new = final_hyp.get("is_new", False)
-        
-        if not hyp_text:
-            continue
-        
-        if hyp_id and hyp_id in existing_hyp_ids:
-            # Обновляем существующую гипотезу
-            hyp_obj = db.query(TherapyHypothesis).filter(
-                TherapyHypothesis.id == hyp_id
-            ).first()
-            if hyp_obj:
-                hyp_obj.hypothesis_text = hyp_text
-                hyp_obj.confidence = hyp_confidence
-                hyp_obj.updated_at = datetime.now(timezone.utc)
-                
-                logger.info(
-                    "Updated hypothesis | id=%s | confidence=%d",
-                    hyp_id[:8],
-                    hyp_confidence,
-                )
-        else:
-            # Создаём новую гипотезу
-            new_hyp = TherapyHypothesis(
+        hypotheses_data = json.loads(hypotheses_raw)
+        for idx, hyp_data in enumerate(hypotheses_data.get("hypotheses", [])):
+            hypothesis = TherapyHypothesis(
                 id=str(uuid.uuid4()),
                 session_id=session_id,
-                hypothesis_text=hyp_text,
-                confidence=hyp_confidence,
+                hypothesis_text=hyp_data.get("hypothesis_text", ""),
+                confidence=hyp_data.get("confidence", 50),
                 is_active=True,
             )
-            db.add(new_hyp)
-            
-            logger.info(
-                "Created new hypothesis | confidence=%d",
-                hyp_confidence,
-            )
+            db.add(hypothesis)
+        db.commit()
+        
+        logger.info("Generated %d hypotheses for session %s", len(hypotheses_data.get("hypotheses", [])), session_id)
     
-    db.commit()
-
-
+    except json.JSONDecodeError as e:
+        logger.warning("Failed to parse hypotheses JSON: %s", e)
+    
     # ===== ЭТАП 6: СОБРАТЬ ОТВЕТ =====
     
     # Перезагружаем сессию чтобы получить обновленные insights и hypotheses
@@ -426,58 +324,3 @@ async def therapy_chat(
     )
     
     return response
-
-
-@router.delete("/therapy/insights/{insight_id}")
-@limiter.limit(RATE_LIMIT_BOARD_CHAT)
-async def delete_therapy_insight(
-    insight_id: str,
-    request: Request,
-    user_id: str = Depends(verify_token),
-    db = Depends(get_db),
-):
-    """
-    Удалить инсайт (отметить как удалённый пользователем).
-    Это НЕ удаление из БД, а установка флага is_deleted_by_user = True.
-    Терапевт будет видеть удалённые инсайты в контексте и понимать что это чувствительные темы.
-    """
-    
-    # Находим инсайт
-    insight = db.query(TherapyKeyInsight).filter(
-        TherapyKeyInsight.id == insight_id
-    ).first()
-    
-    if not insight:
-        logger.warning("Insight not found: %s", insight_id)
-        return {"status": "not_found", "message": "Инсайт не найден"}
-    
-    # Проверяем что инсайт принадлежит сессии текущего пользователя
-    session = db.query(TherapySession).filter(
-        TherapySession.id == insight.session_id,
-        TherapySession.user_id == user_id,
-    ).first()
-    
-    if not session:
-        logger.warning(
-            "Insight %s doesn't belong to user %s",
-            insight_id,
-            user_id,
-        )
-        return {"status": "forbidden", "message": "Доступ запрещён"}
-    
-    # Отмечаем как удалённый
-    insight.is_deleted_by_user = True
-    insight.deleted_at = datetime.now(timezone.utc)
-    db.commit()
-    
-    logger.info(
-        "Insight marked as deleted | insight_id=%s | session_id=%s",
-        insight_id[:8],
-        insight.session_id[:8],
-    )
-    
-    return {
-        "status": "success",
-        "message": "Инсайт удалён",
-        "insight_id": insight_id,
-    }
