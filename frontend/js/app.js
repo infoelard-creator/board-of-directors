@@ -18,6 +18,11 @@ import {
     setSummaryButtonVisible
 } from './ui/renderer.js';
 import { sendBoardRequest } from './api.js';
+import { initTherapySession, transitionToBoard, updateReadyForBoardFlag } from './therapy-mode.js';
+import { sendTherapyMessage } from './therapy-api.js';
+import { addTherapistMessage } from './ui/therapy-chat.js';
+import { initTherapyPanel, updateInsightsList, updateHypothesesList } from './ui/therapy-panel.js';
+import { initBubblesContainer, showBubbles, updateBubblesState } from './ui/therapy-bubbles.js';
 
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 
@@ -34,6 +39,11 @@ async function init() {
     setupResponsiveListener();
     setupDebugMode();
     setupMessageInput();
+
+    // 5. Therapy Setup: инициализируем панель и бабблы
+    initTherapyPanel();
+    initBubblesContainer();
+    setupTherapyEventListeners();
     setupSendButtonHandlers();
 
     // 3. Default: выбираем всех агентов по умолчанию
@@ -46,6 +56,46 @@ async function init() {
 }
 
 // ===== SEND BUTTON HANDLERS =====
+
+// ===== THERAPY EVENT LISTENERS =====
+
+function setupTherapyEventListeners() {
+    document.addEventListener('therapySendToBoard', async (e) => {
+        const hypothesis = e.detail.hypothesis;
+        logSafe('therapySendToBoard', { hypothesisId: hypothesis.id });
+        if (transitionToBoard(hypothesis)) {
+            appState.setTherapyMode(false);
+            const messageInput = document.querySelector('#messageInput');
+            if (messageInput) {
+                messageInput.value = hypothesis.hypothesis_text;
+                messageInput.focus();
+            }
+        }
+    });
+
+    document.addEventListener('therapyFormulateOwn', (e) => {
+        logSafe('therapyFormulateOwn', {});
+        appState.setTherapyMode(false);
+        const messageInput = document.querySelector('#messageInput');
+        if (messageInput) {
+            messageInput.value = '';
+            messageInput.focus();
+        }
+    });
+
+    document.addEventListener('therapyContinueDialogue', (e) => {
+        logSafe('therapyContinueDialogue', {});
+        const messageInput = document.querySelector('#messageInput');
+        if (messageInput) { messageInput.focus(); }
+    });
+
+    document.addEventListener('therapyInsightDelete', (e) => {
+        const insightId = e.detail.insightId;
+        appState.removeTherapyInsightById(insightId);
+        updateInsightsList(appState.getTherapyInsights());
+    });
+}
+
 
 function setupSendButtonHandlers() {
     const sendBtn = document.querySelector('#sendBtn');
@@ -63,15 +113,115 @@ function setupSendButtonHandlers() {
     if (summaryBtn) {
         summaryBtn.addEventListener('click', handleSummaryRequest);
     }
-}
-
-// ===== MAIN HANDLERS =====
 
 /**
- * Отправляет сообщение пользователя и обрабатывает ответ от агентов
+ * Отправляет сообщение пользователя в режиме Therapy или Board
+ * В режиме Therapy: отправляет на /api/therapy
+ * В режиме Board: отправляет на /api/board
  */
 async function handleSendMessage() {
     const messageInput = document.querySelector('#messageInput');
+    const text = messageInput.value.trim();
+
+    if (!text || appState.isCurrentlyLoading()) {
+        return;
+    }
+
+    const inTherapyMode = appState.isTherapyMode();
+
+    addMessage(text, 'user');
+    clearInput();
+    setSendButtonDisabled(true);
+    appState.setLoading(true);
+    appState.setSummaryShown(false);
+
+    const skeleton = addSkeleton();
+
+    try {
+        if (inTherapyMode) {
+            // ===== РЕЖИМ THERAPY =====
+            const sessionId = appState.getTherapySessionId();
+            const authToken = appState.getAuthToken();
+            const response = await sendTherapyMessage(sessionId, text, authToken);
+
+            if (!sessionId && response.session_id) {
+                appState.setTherapySessionId(response.session_id);
+            }
+
+            removeSkeleton(skeleton);
+
+            if (response.therapist_message) {
+                addTherapistMessage(response.therapist_message);
+            }
+
+            if (response.key_insights) {
+                appState.setTherapyInsights(response.key_insights);
+                updateInsightsList(response.key_insights);
+            }
+
+            if (response.hypotheses) {
+                appState.setTherapyHypotheses(response.hypotheses);
+                updateHypothesesList(response.hypotheses);
+            }
+
+            updateReadyForBoardFlag();
+            updateBubblesState();
+
+        } else {
+            // ===== РЕЖИМ BOARD =====
+            if (appState.getSelectedAgentsCount() === 0) {
+                removeSkeleton(skeleton);
+                addMessage('❌ Пожалуйста, выберите хотя бы одного агента', 'agent', 'system');
+                appState.setLoading(false);
+                setSendButtonDisabled(false);
+                return;
+            }
+
+            const { data, requestId } = await sendBoardRequest(text, 'initial');
+
+            if (data.debug === true) {
+                logDebugMetadata(data, requestId);
+            }
+
+            removeSkeleton(skeleton);
+
+            if (data.agents.length === 0) {
+                throw new Error('Сервер вернул пустой ответ');
+            }
+
+            data.agents.forEach(agentReply => {
+                if (agentReply.agent && agentReply.text) {
+                    addMessage(agentReply.text, 'agent', agentReply.agent);
+                    if (agentReply.agent === 'summary') {
+                        appState.setSummaryShown(true);
+                    }
+                }
+            });
+
+            setSummaryButtonVisible(!appState.isSummaryShown());
+        }
+
+        appState.setLoading(false);
+        setSendButtonDisabled(false);
+
+    } catch (err) {
+        logSafe('error', '❌ Send message error:', err.message);
+        removeSkeleton(skeleton);
+
+        let userMessage = '❌ Ошибка: не удалось получить ответ';
+        if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
+            userMessage = '❌ Проблема с сетью. Проверьте подключение.';
+        } else if (err.message.includes('timeout')) {
+            userMessage = '❌ Запрос истёк. Сервер не ответил вовремя.';
+        } else if (err.message) {
+            userMessage = `❌ ${err.message}`;
+        }
+
+        addMessage(userMessage, 'agent', 'system');
+        appState.setLoading(false);
+        setSendButtonDisabled(false);
+    }
+}
     const text = messageInput.value.trim();
 
     if (!text || appState.isCurrentlyLoading()) {
