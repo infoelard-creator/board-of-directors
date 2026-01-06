@@ -13,7 +13,7 @@ from slowapi.util import get_remote_address
 
 from app.core.config import CORS_ORIGINS
 from app.core.logger import logger
-from app.routes import auth_router, agent_router, board_router
+from app.routes import auth_router, agent_router, board_router, therapy_router
 from db import init_db
 
 # ===== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ =====
@@ -61,6 +61,7 @@ def on_shutdown():
 app.include_router(auth_router)
 app.include_router(agent_router)
 app.include_router(board_router)
+app.include_router(therapy_router)
 
 logger.info("All routers registered | routes: /api/login, /api/refresh, /api/board, /api/agent, /api/summary")
 
