@@ -33,8 +33,14 @@ export const agents = {
 export const agentKeys = Object.keys(agents); 
 
 // ===== API КОНФИГУРАЦИЯ ===== 
+// Development vs Production API endpoint
+// На Codespaces: http://localhost:8000/api/board (для локального тестирования)
+// На Пром: /api/board (nginx reverse proxy перенаправит на бэк)
+const isDev = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
 export const API_CONFIG = { 
-    endpoint: '/api/board', 
+    endpoint: isDev ? 'http://localhost:8000/api/board' : '/api/board',
     timeout: 30000, 
     retries: 1, 
     headers: { 'Content-Type': 'application/json' 
@@ -92,7 +98,10 @@ export const REGEX = {
 
 console.log('✅ Config module loaded');
 // ===== THERAPY КОНФИГУРАЦИЯ =====
-export const API_ENDPOINT = '/api';  // Base API endpoint (используется в therapy-api.js)
+// Development vs Production API endpoint for Therapy
+const isDevMode = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+export const API_ENDPOINT = isDevMode ? 'http://localhost:8000/api' : '/api';  // Base API endpoint
 
 export const RATE_LIMIT_THERAPY_CHAT = {
     maxPerMinute: 10,
