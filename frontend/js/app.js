@@ -89,10 +89,37 @@ function setupTherapyEventListeners() {
         if (messageInput) { messageInput.focus(); }
     });
 
-    document.addEventListener('therapyInsightDelete', (e) => {
+    document.addEventListener('therapyInsightDelete', async (e) => {
         const insightId = e.detail.insightId;
-        appState.removeTherapyInsightById(insightId);
-        updateInsightsList(appState.getTherapyInsights());
+        
+        try {
+            // 1. DELETE на сервер
+            const authToken = appState.getAuthToken();
+            const response = await fetch(`/api/therapy/insights/${insightId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+            
+            // 2. Удаляем из state только после успеха
+            appState.removeTherapyInsightById(insightId);
+            updateInsightsList(appState.getTherapyInsights());
+            
+            logSafe('therapyInsightDeleted', {
+                insightId: insightId,
+                remainingInsights: appState.getTherapyInsightsCount()
+            });
+            
+        } catch (error) {
+            logSafe('error', 'Failed to delete insight', error.message);
+            addMessage(`❌ Ошибка удаления insight: ${error.message}`, 'agent', 'system');
+        }
     });
 }
 
@@ -144,7 +171,13 @@ async function handleSendMessage() {
             const authToken = appState.getAuthToken();
             const response = await sendTherapyMessage(sessionId, text, authToken);
 
-            if (!sessionId && response.session_id) {
+            // VALIDATION: Проверяем что сервер вернул session_id
+            if (!response.session_id) {
+                throw new Error('❌ Ошибка сервера: session_id не вернулся');
+            }
+
+            // Если это новая сессия — сохраняем ID
+            if (!sessionId) {
                 appState.setTherapySessionId(response.session_id);
             }
 

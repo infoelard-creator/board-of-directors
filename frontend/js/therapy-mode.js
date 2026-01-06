@@ -25,9 +25,6 @@ export function initTherapySession() {
     // Очищаем чат историю Board (если там что-то было)
     appState.clearHistory();
     
-    // Отключаем режим Board
-    appState.setTherapyMode(true);
-    
     logSafe('initTherapySession SUCCESS', {
         mode: 'therapy',
         sessionId: appState.getTherapySessionId()
@@ -44,27 +41,28 @@ export function transitionToBoard(hypothesis) {
         confidence: hypothesis?.confidence
     });
     
+    if (!hypothesis || !hypothesis.hypothesis_text) {
+        logSafe('transitionToBoard ERROR', {
+            error: 'No hypothesis provided'
+        });
+        return false;
+    }
+    
     // Переходим в режим Board
     appState.setTherapyMode(false);
     
-    // Сохраняем выбранную гипотезу в chatHistory для Board
-    if (hypothesis && hypothesis.hypothesis_text) {
-        const hypothesisText = hypothesis.hypothesis_text;
-        appState.addToHistory('user', 'board', hypothesisText);
-        
-        logSafe('transitionToBoard SUCCESS', {
-            mode: 'board',
-            hypothesisText: hypothesisText.substring(0, 50) + '...'
-        });
-        
-        return true;
-    }
+    // Очищаем историю Therapy (новый сеанс Board)
+    appState.clearHistory();
     
-    logSafe('transitionToBoard ERROR', {
-        error: 'No hypothesis provided'
+    const hypothesisText = hypothesis.hypothesis_text;
+    
+    logSafe('transitionToBoard SUCCESS', {
+        mode: 'board',
+        hypothesisText: hypothesisText.substring(0, 50) + '...',
+        historyCleared: true
     });
     
-    return false;
+    return true;
 }
 
 /**
