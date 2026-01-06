@@ -406,9 +406,130 @@ def create_debug_metadata(
     )
 
 
+
+# ===== УНИВЕРСАЛЬНЫЙ ЗАПРОС К GIGACHAT =====
+
+def ask_gigachat_generic(
+    system_prompt: str,
+    user_msg: str,
+    temperature: float = 0.5,
+    max_tokens: int = 300,
+    top_p: float = 0.85,
+    track_usage: bool = False,
+) -> Tuple[str, dict]:
+    """
+    Универсальный вызов GigaChat для любого промпта.
+    
+    Используется для функций, которые не являются агентами совета
+    (например, парсер, компрессор и т.д.).
+    
+    Не зависит от AGENT_SYSTEM_PROMPTS — берёт промпт как параметр.
+    
+    Args:
+        system_prompt: содержимое system промпта
+        user_msg: сообщение пользователя
+        temperature: температура генерации (0.0-1.0)
+        max_tokens: максимум токенов в ответе
+        top_p: параметр top-p sampling
+        track_usage: нужно ли логировать метрики использования
+        
+    Returns:
+        Tuple[str, dict]: (текст ответа, словарь с usage метриками)
+        
+    Raises:
+        requests.RequestException: если ошибка при запросе к API
+    """
+    token = get_gigachat_token()
+
+    # Готовим payload
+    payload = {
+        "model": GIGA_MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_msg},
+        ],
+        "stream": False,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "top_p": top_p,
+    }
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    url = f"{GIGA_API_BASE}/api/v1/chat/completions"
+
+    start_time = time.time()
+
+    logger.info(
+        "Generic request -> %s | temp=%.1f | max_tokens=%d",
+        url,
+        temperature,
+        max_tokens,
+    )
+
+    # Отправляем запрос
+    resp = requests.post(
+        url,
+        headers=headers,
+        json=payload,
+        timeout=GIGA_REQUEST_TIMEOUT,
+        verify=False,
+    )
+
+    latency_ms = (time.time() - start_time) * 1000
+
+    logger.info(
+        "Generic response <- %s | status=%s | latency=%.0fms",
+        url,
+        resp.status_code,
+        latency_ms,
+    )
+
+    # Обработка ошибок
+    if resp.status_code != 200:
+        logger.error(
+            "Generic request failed | status=%s | body=%s",
+            resp.status_code,
+            resp.text[:500],
+        )
+        resp.raise_for_status()
+
+    j = resp.json()
+
+    # Извлекаем данные из ответа
+    response_text = j["choices"][0]["message"]["content"].strip()
+    finish_reason = j.get("choices", [{}])[0].get("finish_reason", "unknown")
+    tokens_input, tokens_output, tokens_total = _extract_usage(j)
+
+    usage_dict = {
+        "tokens_input": tokens_input,
+        "tokens_output": tokens_output,
+        "tokens_total": tokens_total,
+        "finish_reason": finish_reason,
+        "latency_ms": latency_ms,
+    }
+
+    if track_usage:
+        logger.info(
+            "Usage | tokens_in=%d | tokens_out=%d | total=%d | finish_reason=%s",
+            tokens_input,
+            tokens_output,
+            tokens_total,
+            finish_reason,
+        )
+
+    return response_text, usage_dict
+
+
+
 __all__ = [
     "get_gigachat_token",
     "ask_gigachat",
     "expand_agent_output",
     "create_debug_metadata",
+    "ask_gigachat_generic",
 ]

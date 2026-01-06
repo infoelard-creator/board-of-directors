@@ -7,7 +7,7 @@
 import json
 from typing import List, Optional
 
-from app.llm.client import ask_gigachat, expand_agent_output
+from app.llm.client import ask_gigachat_generic
 from app.cache import (
     get_cached_parse,
     cache_parse,
@@ -43,11 +43,11 @@ def parse_user_request(user_msg: str, user_id: str = "anonymous") -> ParsedReque
         
     Raises:
         requests.RequestException: если ошибка при запросе к GigaChat
-        json.JSONDecodeError: если парсер вернул невалидный JSON
     """
     # Проверяем кэш
     cached = get_cached_parse(user_id, user_msg)
     if cached:
+        logger.info("Parser cache hit | user=%s | message=%s", user_id, user_msg[:50])
         return cached
 
     logger.info(
@@ -56,30 +56,21 @@ def parse_user_request(user_msg: str, user_id: str = "anonymous") -> ParsedReque
         user_msg[:50],
     )
 
-    # Парсим через GigaChat
-    payload_for_parser = {
-        "model": "GigaChat-2",
-        "messages": [
-            {"role": "system", "content": PARSER_SYSTEM_PROMPT},
-            {"role": "user", "content": user_msg},
-        ],
-        "stream": False,
-        "temperature": 0.3,
-        "max_tokens": 300,
-        "top_p": 0.85,
-    }
-
-    # Отправляем как-то... но тут нам нужен ask_gigachat
-    # Но ask_gigachat требует agent и use_msg в специальном формате
-    # Нам нужна утилита для парсера!
-    # Создадим простую функцию для парсера
-
-    parser_output, _ = ask_gigachat("parser", user_msg)  # ← Временно: нужен парсер агент
+    # Парсим через GigaChat используя универсальную функцию
+    parser_output, usage = ask_gigachat_generic(
+        system_prompt=PARSER_SYSTEM_PROMPT,
+        user_msg=user_msg,
+        temperature=0.3,
+        max_tokens=300,
+        top_p=0.85,
+        track_usage=False,
+    )
 
     logger.info(
-        "Parser output | message=%s | output=%s",
+        "Parser output | message=%s | output=%s | tokens=%d",
         user_msg[:50],
         parser_output[:200],
+        usage.get("tokens_total", 0),
     )
 
     # Парсим JSON из ответа
@@ -139,7 +130,6 @@ def compress_user_message(user_msg: str, user_id: str = "anonymous") -> Compress
         
     Raises:
         requests.RequestException: если ошибка при запросе к GigaChat
-        json.JSONDecodeError: если компрессор вернул невалидный JSON
     """
     # Проверяем кэш
     cached = get_cached_compressed(user_id, user_msg)
@@ -157,13 +147,21 @@ def compress_user_message(user_msg: str, user_id: str = "anonymous") -> Compress
         user_msg[:50],
     )
 
-    # Сжимаем через GigaChat (парсер агент)
-    compressor_output, _ = ask_gigachat("compressor", user_msg)
+    # Сжимаем через GigaChat используя универсальную функцию
+    compressor_output, usage = ask_gigachat_generic(
+        system_prompt=COMPRESSOR_SYSTEM_PROMPT,
+        user_msg=user_msg,
+        temperature=AGENT_PARAMS["compressor"]["temperature"],
+        max_tokens=AGENT_PARAMS["compressor"]["max_tokens"],
+        top_p=AGENT_PARAMS["compressor"]["top_p"],
+        track_usage=False,
+    )
 
     logger.info(
-        "Compressor output | message=%s | output=%s",
+        "Compressor output | message=%s | output=%s | tokens=%d",
         user_msg[:50],
         compressor_output[:200],
+        usage.get("tokens_total", 0),
     )
 
     # Парсим JSON из ответа
