@@ -46,13 +46,14 @@ async function init() {
     setupTherapyEventListeners();
     setupSendButtonHandlers();
 
-    // 3. Default: выбираем всех агентов по умолчанию
-    agentKeys.forEach(key => appState.selectAgent(key));
-    updateUISelections();
+    // 3. Therapy Setup: инициализируем Therapy режим
+    // ✅ КРИТИЧНЫЙ ВЫЗОВ: инициализируем Therapy режим при старте приложения
+    initTherapySession();
+    logSafe('info', '🧠 Therapy mode initialized. Ready for user input.');
 
     // 4. Готово!
     logSafe('info', '✅ Board.AI инициализирован');
-    logSafe('info', `📊 Selected ${appState.getSelectedAgentsCount()} agents`);
+    logSafe('info', `📊 Mode: ${appState.isTherapyMode() ? 'Therapy 🧠' : 'Board 🎯'}`);
 }
 
 // ===== SEND BUTTON HANDLERS =====
@@ -65,22 +66,34 @@ function setupTherapyEventListeners() {
         logSafe('therapySendToBoard', { hypothesisId: hypothesis.id });
         if (transitionToBoard(hypothesis)) {
             appState.setTherapyMode(false);
+            
+            // ✅ КРИТИЧНЫЙ ШАГ: при переходе на Board выбираем всех агентов
+            agentKeys.forEach(key => appState.selectAgent(key));
+            updateUISelections();
+            
             const messageInput = document.querySelector('#messageInput');
             if (messageInput) {
                 messageInput.value = hypothesis.hypothesis_text;
                 messageInput.focus();
             }
+            logSafe('transitionToBoard', { agentsSelected: appState.getSelectedAgentsCount() });
         }
     });
 
     document.addEventListener('therapyFormulateOwn', (e) => {
         logSafe('therapyFormulateOwn', {});
         appState.setTherapyMode(false);
+        
+        // ✅ Выбираем всех агентов при формулировании своей идеи
+        agentKeys.forEach(key => appState.selectAgent(key));
+        updateUISelections();
+        
         const messageInput = document.querySelector('#messageInput');
         if (messageInput) {
             messageInput.value = '';
             messageInput.focus();
         }
+        logSafe('therapyFormulateOwn', { agentsSelected: appState.getSelectedAgentsCount() });
     });
 
     document.addEventListener('therapyContinueDialogue', (e) => {
