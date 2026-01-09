@@ -88,8 +88,19 @@ export function updateInsightsList(insights) {
             return true;
         }
         
-        // Отображаем insights
-        insights.forEach((insight, index) => {
+        // Отображаем insights (только с непустым текстом)
+        const validInsights = insights.filter(insight => {
+            // Фильтруем пустые insights
+            return insight.insight_summary && 
+                   insight.insight_summary.toString().trim().length > 0;
+        });
+        
+        if (validInsights.length === 0) {
+            list.innerHTML = '<p class="therapy-empty">Нет insights пока...</p>';
+            return true;
+        }
+        
+        validInsights.forEach((insight, index) => {
             const insightDiv = document.createElement('div');
             insightDiv.className = `${THERAPY_CONFIG.therapyInsightClass}`;
             insightDiv.dataset.insightId = insight.id;
