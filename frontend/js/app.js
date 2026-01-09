@@ -141,6 +141,7 @@ function setupSendButtonHandlers() {
         summaryBtn.addEventListener('click', handleSummaryRequest);
     }
 
+}
 /**
  * Отправляет сообщение пользователя в режиме Therapy или Board
  * В режиме Therapy: отправляет на /api/therapy
@@ -246,85 +247,6 @@ async function handleSendMessage() {
             userMessage = '❌ Проблема с сетью. Проверьте подключение.';
         } else if (err.message.includes('timeout')) {
             userMessage = '❌ Запрос истёк. Сервер не ответил вовремя.';
-        } else if (err.message) {
-            userMessage = `❌ ${err.message}`;
-        }
-
-        addMessage(userMessage, 'agent', 'system');
-        appState.setLoading(false);
-        setSendButtonDisabled(false);
-    }
-}
-    const text = messageInput.value.trim();
-
-    if (!text || appState.isCurrentlyLoading()) {
-        return;
-    }
-
-    // Добавляем сообщение в чат
-    addMessage(text, 'user');
-    clearInput();
-    setSendButtonDisabled(true);
-    appState.setLoading(true);
-    appState.setSummaryShown(false);
-
-    // Показываем loader
-    const skeleton = addSkeleton();
-
-    try {
-        // Проверяем, выбран ли хотя бы один агент
-        if (appState.getSelectedAgentsCount() === 0) {
-            removeSkeleton(skeleton);
-            addMessage('❌ Пожалуйста, выберите хотя бы одного агента', 'agent', 'system');
-            appState.setLoading(false);
-            setSendButtonDisabled(false);
-            return;
-        }
-
-        // Отправляем запрос
-        const { data, requestId } = await sendBoardRequest(text, 'initial');
-
-        // Обрабатываем debug информацию если нужна
-        if (data.debug === true) {
-            logDebugMetadata(data, requestId);
-        }
-
-        // Удаляем loader и рендерим ответы
-        removeSkeleton(skeleton);
-
-        if (data.agents.length === 0) {
-            throw new Error('Сервер вернул пустой ответ');
-        }
-
-        // Рендерим сообщение от каждого агента
-        data.agents.forEach(agentReply => {
-            if (agentReply.agent && agentReply.text) {
-                addMessage(agentReply.text, 'agent', agentReply.agent);
-
-                if (agentReply.agent === 'summary') {
-                    appState.setSummaryShown(true);
-                }
-            }
-        });
-
-        // Показываем кнопку "Обновить итоги" если summary не был показан
-        setSummaryButtonVisible(!appState.isSummaryShown());
-
-        appState.setLoading(false);
-        setSendButtonDisabled(false);
-
-    } catch (err) {
-        logSafe('error', '❌ Send message error:', err.message);
-        removeSkeleton(skeleton);
-
-        let userMessage = '❌ Ошибка: не удалось получить ответ';
-
-        if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
-            userMessage = '❌ Проблема с сетью. Проверьте подключение.';
-        } else if (err.message.includes('timeout')) {
-            userMessage = '❌ Запрос истёк. Сервер не ответил вовремя.';
-        } else if (err.message.includes('не выбрали')) {
-            userMessage = '❌ Пожалуйста, выберите хотя бы одного агента';
         } else if (err.message) {
             userMessage = `❌ ${err.message}`;
         }

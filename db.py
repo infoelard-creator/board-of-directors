@@ -57,7 +57,7 @@ class TherapySession(Base):
     user = relationship("User", back_populates="therapy_sessions")
     messages = relationship("TherapyMessage", back_populates="session", cascade="all, delete-orphan")
     key_insights = relationship("TherapyKeyInsight", back_populates="session", cascade="all, delete-orphan")
-    hypotheses = relationship("TherapyHypothesis", back_populates="session", cascade="all, delete-orphan")
+    hypotheses = relationship("TherapyHypothesis", foreign_keys="[TherapyHypothesis.session_id]", back_populates="session", cascade="all, delete-orphan")
 
 
 class TherapyMessage(Base):
@@ -94,7 +94,7 @@ class TherapyKeyInsight(Base):
     answer = Column(Text, nullable=False)
     
     # Выжимка ключевого знания (одна строка, как баббл)
-    insight_summary = Column(String(200), nullable=False)
+    insight_summary = Column(String(200), nullable=True)  # Может быть None если инсайт не выявлен
     
     # Уверенность Терапевта в этом знании (0-100)
     confidence = Column(Integer, default=80)
@@ -143,7 +143,7 @@ class TherapyHypothesis(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Связь
-    session = relationship("TherapySession", back_populates="hypotheses")
+    session = relationship("TherapySession", back_populates="hypotheses", foreign_keys="[TherapyHypothesis.session_id]")
 
 
 # ===== ИНИЦИАЛИЗАЦИЯ БД =====
