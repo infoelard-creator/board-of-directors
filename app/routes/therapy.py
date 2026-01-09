@@ -221,14 +221,16 @@ async def therapy_chat(
         therapist_response = json.loads(therapist_raw_response)
         therapist_message = therapist_response.get("question", "")
         
-        # Экстрактим ключевое знание из ответа пользователя (если есть)
-        if "key_insight" in therapist_response:
+        # Экстрактим ключевое знание из ответа пользователя (если есть и не пусто)
+        key_insight_text = therapist_response.get("key_insight", "").strip()
+        if "key_insight" in therapist_response and key_insight_text:
+            # ✅ Создаём инсайт только если текст непуст
             insight = TherapyKeyInsight(
                 id=str(uuid.uuid4()),
                 session_id=session_id,
                 question=therapist_response.get("question_asked", ""),
                 answer=user_msg,
-                insight_summary=therapist_response.get("key_insight", ""),
+                insight_summary=key_insight_text,
                 confidence=therapist_response.get("insight_confidence", 80),
                 importance=therapist_response.get("insight_importance", 80),
                 display_order=len(session.key_insights),
