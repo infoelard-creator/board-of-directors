@@ -13,11 +13,11 @@ import { THERAPY_CONFIG } from './config.js';
 export function initTherapySession() {
     logSafe('initTherapySession', { action: 'init' });
     
-    // Переходим в режим Therapy
-    appState.setTherapyMode(true);
-    
     // Очищаем старую сессию (если была)
     appState.resetTherapyState();
+    
+    // ✅ ПОСЛЕ очистки, переходим в режим Therapy
+    appState.setTherapyMode(true);
     
     // Инициализируем новую сессию (session_id = null, будет создан на бэке)
     appState.setTherapySessionId(null);
