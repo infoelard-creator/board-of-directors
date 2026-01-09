@@ -222,7 +222,7 @@ async def therapy_chat(
         therapist_message = therapist_response.get("question", "")
         
         # Экстрактим ключевое знание из ответа пользователя (если есть и не пусто)
-        key_insight_text = therapist_response.get("key_insight", "").strip()
+        key_insight_text = (therapist_response.get("key_insight", "") or "").strip()
         if "key_insight" in therapist_response and key_insight_text:
             # ✅ Создаём инсайт только если текст непуст
             insight = TherapyKeyInsight(
