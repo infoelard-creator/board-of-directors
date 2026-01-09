@@ -136,10 +136,6 @@ HYPOTHESIS_DEDUPLICATOR_SYSTEM_PROMPT = (
 
 
 # ===== ПАРАМЕТРЫ И ПРОМПТЫ ДЛЯ ТЕРАПЕВТА =====
-THERAPY_PARAMS = {
-    "therapy": {"temperature": 0.7, "max_tokens": 200, "top_p": 0.9},
-    "therapy_hypothesis_generator": {"temperature": 0.6, "max_tokens": 400, "top_p": 0.9},
-}
 
 THERAPY_SYSTEM_PROMPT = (
     "РОЛЬ: Психолог-бизнес-консультант (Терапевт).\n"
@@ -374,8 +370,3 @@ PARSER_SYSTEM_PROMPT = (
     "- summary: суть в 1 строке\n"
     "Отвечай ТОЛЬКО JSON, без комментариев."
 )
-
-
-# ===== ПАРАМЕТРЫ И ПРОМПТЫ ДЛЯ ТЕРАПЕВТА =====
-
-

@@ -384,8 +384,8 @@ async def therapy_chat(
         TherapyKeyInsightSchema(
             id=i.id,
             insight_summary=i.insight_summary or "Ключевое знание",  # Дефолт если None
-            confidence=i.confidence or 0,  # Дефолт если None
-            importance=i.importance or 0,  # Дефолт если None
+            confidence=i.confidence if i.confidence is not None else 0,  # Дефолт если None
+            importance=i.importance if i.importance is not None else 0,  # Дефолт если None
         )
         for i in session.key_insights
         if not i.is_deleted_by_user
