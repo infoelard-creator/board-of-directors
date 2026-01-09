@@ -6,8 +6,11 @@ import { THERAPY_SELECTORS, THERAPY_CSS_CLASSES } from '../config.js';
 import { logSafe } from '../utils/helpers.js';
 
 let touchStartX = 0;
+let touchStartY = 0;
 let touchEndX = 0;
+let touchEndY = 0;
 const SWIPE_THRESHOLD = 50; // минимальная дистанция для свайпа (px)
+const VERTICAL_THRESHOLD = 30; // максимальное вертикальное движение для жеста (px)
 
 /**
  * Инициализировать управление свайпами и toggle кнопкой
@@ -58,10 +61,12 @@ function createDesktopToggleButton() {
 function setupSwipeGestures() {
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
     }, false);
     
     document.addEventListener('touchend', (e) => {
         touchEndX = e.changedTouches[0].screenX;
+        touchEndY = e.changedTouches[0].screenY;
         handleSwipe();
     }, false);
     
@@ -70,20 +75,48 @@ function setupSwipeGestures() {
 
 /**
  * Обработать свайп
+ * 
+ * ЛОГИКА ЖЕСТОВ:
+ * - Pull from right (свайп справа-налево): открыть панель
+ * - Push to right (свайп слева-направо): закрыть панель
+ * - Защита от вертикальных жестов (скролл, прокрутка чата)
  */
 function handleSwipe() {
-    const diff = touchStartX - touchEndX;
+    // Горизонтальная дистанция
+    const diffX = touchEndX - touchStartX;
+    
+    // Вертикальная дистанция (защита от случайных вертикальных жестов)
+    const diffY = Math.abs(touchEndY - touchStartY);
+    
+    // Если вертикальное движение > горизонтального, это скролл, не свайп
+    if (diffY > VERTICAL_THRESHOLD) {
+        return;
+    }
+    
     const isPanel = document.querySelector(THERAPY_SELECTORS.therapyPanel);
     const isVisible = isPanel?.classList.contains(THERAPY_CSS_CLASSES.panelVisible);
     
-    // Свайп справа-налево (pull from right) = открыть панель
-    if (diff < -SWIPE_THRESHOLD && !isVisible) {
+    logSafe('handleSwipe', {
+        diffX: Math.round(diffX),
+        diffY: Math.round(diffY),
+        isVisible: isVisible,
+        action: diffX < -SWIPE_THRESHOLD ? 'pull-from-right' : diffX > SWIPE_THRESHOLD ? 'push-to-right' : 'no-action'
+    });
+    
+    // ОТКРЫТИЕ: Pull from right (свайп справа-налево = отрицательное diffX)
+    // Пользователь проводит пальцем от правого края (большой X) к центру (меньший X)
+    // touchEndX < touchStartX → diffX < 0 → diffX < -SWIPE_THRESHOLD
+    if (diffX < -SWIPE_THRESHOLD && !isVisible) {
         openTherapyPanel();
+        return;
     }
     
-    // Свайп слева-направо (push to right) = закрыть панель
-    if (diff > SWIPE_THRESHOLD && isVisible) {
+    // ЗАКРЫТИЕ: Push to right (свайп слева-направо = положительное diffX)
+    // Пользователь проводит пальцем от центра (меньший X) к правому краю (большой X)
+    // touchEndX > touchStartX → diffX > 0 → diffX > SWIPE_THRESHOLD
+    if (diffX > SWIPE_THRESHOLD && isVisible) {
         closeTherapyPanel();
+        return;
     }
 }
 
@@ -96,7 +129,7 @@ export function openTherapyPanel() {
     
     if (!panel) return;
     
-    // Показываем панель
+    // Показываем панель (добавляем класс visible)
     panel.classList.add(THERAPY_CSS_CLASSES.panelVisible);
     
     // Показываем overlay (если существует)
@@ -104,8 +137,11 @@ export function openTherapyPanel() {
         overlay.classList.add('visible');
     }
     
-    // Блокируем скролл на мобилке (optional)
+    // Блокируем скролл на мобилке
     document.body.style.overflow = 'hidden';
+    
+    // Закрываем левое меню (бургер) если оно открыто
+    closeLeftMenuIfOpen();
     
     // Обновляем кнопку на десктопе (стрелка вправо)
     updateDesktopToggleButton(true);
@@ -122,7 +158,7 @@ export function closeTherapyPanel() {
     
     if (!panel) return;
     
-    // Скрываем панель
+    // Скрываем панель (удаляем класс visible)
     panel.classList.remove(THERAPY_CSS_CLASSES.panelVisible);
     
     // Скрываем overlay
@@ -156,6 +192,25 @@ export function toggleTherapyPanel() {
 }
 
 /**
+ * Закрыть левое меню (бургер), если оно открыто
+ * Синхронизация: при открытии панели терапии закрываем левое меню
+ */
+function closeLeftMenuIfOpen() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.overlay');
+    
+    if (sidebar && sidebar.classList.contains('visible')) {
+        sidebar.classList.remove('visible');
+    }
+    
+    if (overlay && overlay.classList.contains('visible')) {
+        overlay.classList.remove('visible');
+    }
+    
+    logSafe('closeLeftMenuIfOpen', { action: 'closed' });
+}
+
+/**
  * Обновить кнопку-закладку на десктопе
  * @param {boolean} isOpen - Панель открыта?
  */
@@ -164,12 +219,12 @@ function updateDesktopToggleButton(isOpen) {
     if (!btn) return;
     
     if (isOpen) {
-        btn.innerHTML = '▶'; // Стрелка вправо (панель скрыта)
-        btn.title = 'Показать панель терапии';
+        btn.innerHTML = '▶'; // Стрелка вправо (панель открыта, нажми чтобы закрыть)
+        btn.title = 'Скрыть панель терапии';
         btn.classList.remove('hidden');
     } else {
-        btn.innerHTML = '◀'; // Стрелка влево (панель открыта)
-        btn.title = 'Скрыть панель терапии';
+        btn.innerHTML = '◀'; // Стрелка влево (панель закрыта, нажми чтобы открыть)
+        btn.title = 'Показать панель терапии';
     }
 }
 
@@ -184,16 +239,22 @@ function setupToggleButtonEvents() {
             return;
         }
         
-        // Старая кнопка в панели (если существует)
-        if (e.target.id === 'therapyTogglePanelBtn') {
-            toggleTherapyPanel();
-            return;
-        }
-        
         // Клик на overlay = закрыть панель
         if (e.target.id === 'therapyPanelOverlay') {
             closeTherapyPanel();
             return;
+        }
+    });
+    
+    // Синхронизация: когда открывается левое меню, закрываем правую панель
+    document.addEventListener('click', (e) => {
+        if (e.target.id === 'menuBtn' || e.target.closest('#menuBtn')) {
+            // Это клик на кнопку бургер-меню
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar && sidebar.classList.contains('visible')) {
+                // Меню открывается, закрываем панель терапии
+                closeTherapyPanel();
+            }
         }
     });
     

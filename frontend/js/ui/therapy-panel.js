@@ -32,7 +32,7 @@ export function initTherapyPanel() {
         // Создаем панель
         panel = document.createElement('div');
         panel.id = 'therapyPanel';
-        panel.className = `therapy-panel ${THERAPY_CSS_CLASSES.panelVisible}`;
+        panel.className = 'therapy-panel';
         panel.innerHTML = `
             <div class="therapy-panel-header">
                 <h3>${THERAPY_CONFIG.icons.insights} Key Insights</h3>
