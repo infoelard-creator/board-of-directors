@@ -193,9 +193,9 @@
 /* Исправленные цвета для лучшей читаемости */
 
 .message.therapy-message {
-    background: #F3F4FF;
-    border-left: 3px solid #6366F1;
-    border-radius: 8px;
+    background: #F9FAFF;
+    border-left: 3px solid #A5B4FC;
+    border-radius: 12px;
     padding: 16px;
     margin: 12px 0;
 }
@@ -230,7 +230,7 @@
 /* Dark mode для Therapy message */
 @media (prefers-color-scheme: dark) {
     .message.therapy-message {
-        background: #1F2937;
+    background: #F9FAFF;
         border-left-color: #818CF8;
     }
 
@@ -245,7 +245,7 @@
 
 /* Data attribute dark mode support */
 [data-color-scheme="dark"] .message.therapy-message {
-    background: #1F2937;
+    background: #F9FAFF;
     border-left-color: #818CF8;
 }
 
@@ -258,7 +258,7 @@
 }
 
 [data-color-scheme="light"] .message.therapy-message {
-    background: #F3F4FF;
+    background: #F9FAFF;
     border-left-color: #6366F1;
 }
 
