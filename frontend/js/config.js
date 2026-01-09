@@ -138,7 +138,9 @@ export const THERAPY_SELECTORS = {
     therapyInsightsList: '#therapyInsightsList',
     therapyHypothesesList: '#therapyHypothesesList',
     therapyBubblesContainer: '#therapyBubblesContainer',
-    therapyToggleBtn: '#therapyTogglePanelBtn'
+    therapyToggleBtn: '#therapyTogglePanelBtn',
+    therapyPanelOverlay: '#therapyPanelOverlay',
+    therapyDesktopToggleBtn: '#therapyDesktopToggleBtn'
 };
 
 // ===== THERAPY CSS КЛАССЫ =====

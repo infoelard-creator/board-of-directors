@@ -19,7 +19,6 @@ import {
 } from './ui/renderer.js';
 import { sendBoardRequest } from './api.js';
 import { initTherapySession, transitionToBoard, updateReadyForBoardFlag } from './therapy-mode.js';
-import { initTherapySwipeAndToggle } from './ui/therapy-swipe.js';
 import { sendTherapyMessage } from './therapy-api.js';
 import { addTherapistMessage } from './ui/therapy-chat.js';
 import { initTherapyPanel, updateInsightsList, updateHypothesesList } from './ui/therapy-panel.js';
@@ -43,19 +42,17 @@ async function init() {
 
     // 5. Therapy Setup: инициализируем панель и бабблы
     initTherapyPanel();
-    initTherapySwipeAndToggle();
     initBubblesContainer();
     setupTherapyEventListeners();
     setupSendButtonHandlers();
 
-    // 3. Therapy Setup: инициализируем Therapy режим
-    // ✅ КРИТИЧНЫЙ ВЫЗОВ: инициализируем Therapy режим при старте приложения
-    initTherapySession();
-    logSafe('info', '🧠 Therapy mode initialized. Ready for user input.');
+    // 3. Default: выбираем всех агентов по умолчанию
+    agentKeys.forEach(key => appState.selectAgent(key));
+    updateUISelections();
 
     // 4. Готово!
     logSafe('info', '✅ Board.AI инициализирован');
-    logSafe('info', `📊 Mode: ${appState.isTherapyMode() ? 'Therapy 🧠' : 'Board 🎯'}`);
+    logSafe('info', `📊 Selected ${appState.getSelectedAgentsCount()} agents`);
 }
 
 // ===== SEND BUTTON HANDLERS =====
@@ -68,34 +65,22 @@ function setupTherapyEventListeners() {
         logSafe('therapySendToBoard', { hypothesisId: hypothesis.id });
         if (transitionToBoard(hypothesis)) {
             appState.setTherapyMode(false);
-            
-            // ✅ КРИТИЧНЫЙ ШАГ: при переходе на Board выбираем всех агентов
-            agentKeys.forEach(key => appState.selectAgent(key));
-            updateUISelections();
-            
             const messageInput = document.querySelector('#messageInput');
             if (messageInput) {
                 messageInput.value = hypothesis.hypothesis_text;
                 messageInput.focus();
             }
-            logSafe('transitionToBoard', { agentsSelected: appState.getSelectedAgentsCount() });
         }
     });
 
     document.addEventListener('therapyFormulateOwn', (e) => {
         logSafe('therapyFormulateOwn', {});
         appState.setTherapyMode(false);
-        
-        // ✅ Выбираем всех агентов при формулировании своей идеи
-        agentKeys.forEach(key => appState.selectAgent(key));
-        updateUISelections();
-        
         const messageInput = document.querySelector('#messageInput');
         if (messageInput) {
             messageInput.value = '';
             messageInput.focus();
         }
-        logSafe('therapyFormulateOwn', { agentsSelected: appState.getSelectedAgentsCount() });
     });
 
     document.addEventListener('therapyContinueDialogue', (e) => {

@@ -26,6 +26,9 @@ export function initTherapyPanel() {
             return true;
         }
         
+        // Создаем overlay (для мобилки)
+        createTherapyOverlay();
+        
         // Создаем панель
         panel = document.createElement('div');
         panel.id = 'therapyPanel';
@@ -33,7 +36,6 @@ export function initTherapyPanel() {
         panel.innerHTML = `
             <div class="therapy-panel-header">
                 <h3>${THERAPY_CONFIG.icons.insights} Key Insights</h3>
-                <button id="therapyTogglePanelBtn" class="therapy-toggle-btn" title="Скрыть/показать">×</button>
             </div>
             
             <div class="therapy-panel-content">
@@ -63,6 +65,22 @@ export function initTherapyPanel() {
         logSafe('initTherapyPanel ERROR', { error: error.message });
         return false;
     }
+}
+
+/**
+ * Создать overlay для мобильной панели
+ */
+function createTherapyOverlay() {
+    let overlay = document.querySelector('#therapyPanelOverlay');
+    if (overlay) return;
+    
+    overlay = document.createElement('div');
+    overlay.id = 'therapyPanelOverlay';
+    overlay.className = 'therapy-panel-overlay';
+    
+    document.body.appendChild(overlay);
+    
+    logSafe('createTherapyOverlay', { created: true });
 }
 
 /**
@@ -217,18 +235,6 @@ function createConfidenceBar(confidence) {
  * Setup event listeners для панели
  */
 function setupTherapyPanelEvents() {
-    // Toggle button
-    const toggleBtn = document.querySelector(THERAPY_SELECTORS.therapyToggleBtn);
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
-            const panel = document.querySelector(THERAPY_SELECTORS.therapyPanel);
-            if (panel) {
-                panel.classList.toggle(THERAPY_CSS_CLASSES.panelVisible);
-                logSafe('toggleTherapyPanel', { visible: panel.classList.contains(THERAPY_CSS_CLASSES.panelVisible) });
-            }
-        });
-    }
-    
     // Delete insight buttons (delegate)
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('therapy-insight-delete-btn')) {
