@@ -104,7 +104,7 @@ export function setupSidebarEvents() {
  * Открывает sidebar на мобильной версии
  */
 export function openSidebar() {
-    const sidebar = document.querySelector(DOM_SELECTORS.sidebar);
+    const sidebar = document.querySelector(DOM_SELECTORS.sidebarAgents);
     const overlay = document.querySelector(DOM_SELECTORS.overlay);
 
     if (sidebar) {
@@ -119,7 +119,7 @@ export function openSidebar() {
  * Закрывает sidebar на мобильной версии
  */
 export function closeSidebar() {
-    const sidebar = document.querySelector(DOM_SELECTORS.sidebar);
+    const sidebar = document.querySelector(DOM_SELECTORS.sidebarAgents);
     const overlay = document.querySelector(DOM_SELECTORS.overlay);
 
     if (sidebar) {

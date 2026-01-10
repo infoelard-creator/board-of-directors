@@ -9,12 +9,25 @@
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/components.css">
     <link rel="stylesheet" href="styles/responsive.css">
+    <link rel="stylesheet" href="styles/layout-refactor.css">
     <link rel="stylesheet" href="styles/animations.css">
     <link rel="stylesheet" href="styles/therapy.css">
 </head>
 <body>
 
     <div class="container">
+
+        <!-- Sidebar Layers (левая панель со слоями) -->
+        <div class="sidebar-layers" id="sidebarLayers">
+            <div class="layer-item active" data-layer="therapy" title="Терапевт">
+                <span class="layer-icon">🧠</span>
+                <span class="layer-item-label">Терапевт</span>
+            </div>
+            <div class="layer-item" data-layer="board" title="Совет">
+                <span class="layer-icon">👥</span>
+                <span class="layer-item-label">Совет</span>
+            </div>
+        </div>
         <!-- Mobile Header -->
         <div class="mobile-header">
             <button class="mobile-menu-btn" id="menuBtn">☰</button>
@@ -27,7 +40,7 @@
 
         <!-- Sidebar / Drawer -->
         <div class="overlay" id="overlay"></div>
-        <div class="sidebar" id="sidebar">
+        <div class="sidebar-agents" id="sidebarAgents">
             <div class="agents-section">
                 <h3>Члены совета</h3>
                 <div id="agentsList"></div>

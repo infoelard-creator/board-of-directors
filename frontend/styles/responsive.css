@@ -141,7 +141,7 @@
     }
 
     /* Трансформируем sidebar в drawer */
-    .sidebar {
+    .sidebar-agents {
         position: fixed;
         top: 110px;
         left: 0;
@@ -154,7 +154,7 @@
         padding-top: 20px;
     }
 
-    .sidebar.open {
+    .sidebar-agents.open {
         transform: translateX(0);
     }
 

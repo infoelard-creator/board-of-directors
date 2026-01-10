@@ -2,7 +2,7 @@
 // Управляет открытием/закрытием панели терапии на мобилке (свайпы)
 // и кнопкой-закладкой на десктопе
 
-import { THERAPY_SELECTORS, THERAPY_CSS_CLASSES } from '../config.js';
+import { THERAPY_SELECTORS, THERAPY_CSS_CLASSES, DOM_SELECTORS } from '../config.js';
 import { logSafe } from '../utils/helpers.js';
 
 let touchStartX = 0;
@@ -196,8 +196,8 @@ export function toggleTherapyPanel() {
  * Синхронизация: при открытии панели терапии закрываем левое меню
  */
 function closeLeftMenuIfOpen() {
-    const sidebar = document.querySelector('.sidebar');
-    const overlay = document.querySelector('.overlay');
+    const sidebar = document.querySelector(DOM_SELECTORS.sidebarAgents);
+    const overlay = document.querySelector(DOM_SELECTORS.overlay);
     
     if (sidebar && sidebar.classList.contains('visible')) {
         sidebar.classList.remove('visible');
@@ -250,7 +250,7 @@ function setupToggleButtonEvents() {
     document.addEventListener('click', (e) => {
         if (e.target.id === 'menuBtn' || e.target.closest('#menuBtn')) {
             // Это клик на кнопку бургер-меню
-            const sidebar = document.querySelector('.sidebar');
+            const sidebar = document.querySelector(DOM_SELECTORS.sidebarAgents);
             if (sidebar && sidebar.classList.contains('visible')) {
                 // Меню открывается, закрываем панель терапии
                 closeTherapyPanel();
