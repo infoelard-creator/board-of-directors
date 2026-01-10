@@ -273,15 +273,6 @@
 
 
 
-    .message.therapy-message .message-header {
-        color: #8b9dfe;
-    }
-
-    .message.therapy-message .message-body {
-        color: #ffffff;
-        font-weight: 500;
-    }
-}
 
 /* ===== THERAPY BUBBLES ===== */
 .therapy-bubbles {
@@ -359,7 +350,6 @@
     animation: slideInRight 0.3s ease;
 }
 
-console.log('✅ Therapy Styles loaded');
 
 /* ===== THERAPY PANEL OVERLAY ===== */
 .therapy-panel-overlay {
