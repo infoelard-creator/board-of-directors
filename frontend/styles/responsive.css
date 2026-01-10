@@ -121,67 +121,6 @@
 }
 
 /* ===== RESPONSIVE BREAKPOINTS ===== */
-@media (max-width: 768px) {
-    body {
-        padding: 0;
-        align-items: flex-start;
-        background: #f0f2f5;
-    }
-
-    .container {
-        height: 100vh;
-        border-radius: 0;
-        flex-direction: column;
-    }
-
-    /* Показываем мобильные элементы */
-    .mobile-header,
-    .mobile-tabs {
-        display: flex;
-    }
-
-    /* Трансформируем sidebar в drawer */
-    .sidebar-agents {
-        position: fixed;
-        top: 110px;
-        left: 0;
-        height: calc(100% - 110px);
-        width: 80%;
-        transform: translateX(-100%);
-        z-index: 200;
-        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.1);
-        border-right: none;
-        padding-top: 20px;
-    }
-
-    .sidebar-agents.open {
-        transform: translateX(0);
-    }
-
-    /* Добавляем паддинг для чата под мобильной навигацией */
-    .chat-area {
-        padding-top: 120px;
-        padding-bottom: 80px;
-    }
-
-    /* Сообщения на мобилке уже */
-    .message {
-        max-width: 95%;
-    }
-
-    /* На мобилке секции по вертикали */
-    .content-section {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .section-label {
-        min-width: auto;
-        margin-bottom: 2px;
-    }
-}
-
-/* Desktop breakpoint */
 @media (min-width: 769px) {
     .content-section {
         flex-direction: row;

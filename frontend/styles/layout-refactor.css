@@ -85,41 +85,51 @@
 /* ===== TABLET LAYOUT (769px - 1024px) ===== */
 @media (min-width: 769px) and (max-width: 1024px) {
     .container {
-        display: grid;
-        grid-template-columns: var(--sidebar-layers-width) 1fr;
-        grid-template-rows: 1fr auto;
-        gap: 0;
-        height: 85vh;
-    }
-
-    /* Левая панель слоёв видна */
-    .sidebar-layers {
-        grid-column: 1;
-        grid-row: 1 / 3;
         display: flex;
         flex-direction: column;
-        background: #f8f9fa;
-        border-right: 1px solid #e9ecef;
-        padding: 12px 0;
-        overflow-y: auto;
-        z-index: 20;
+        height: 100vh;
+        border-radius: 0;
+    }
+
+    .mobile-header,
+    .mobile-tabs {
+        display: flex !important;
+    }
+
+    /* Левая панель слоёв как горизонтальные tabs */
+    .sidebar-layers {
+        display: flex;
+        flex-direction: row;
+        background: #fff;
+        border-bottom: 1px solid #e9ecef;
+        padding: 0;
+        height: 50px;
+        overflow-x: auto;
+        position: fixed;
+        top: 60px;
+        left: 0;
+        right: 0;
+        width: 100%;
+        z-index: 99;
     }
 
     /* Основной контент */
     .main {
-        grid-column: 2;
-        grid-row: 1 / 3;
+        flex: 1;
         display: flex;
         flex-direction: column;
+        margin-top: 110px;
+        margin-bottom: 0;
+        overflow-y: auto;
     }
 
-    /* Боковая панель агентов как модальное окно (drawer) */
+    /* Боковая панель агентов как drawer (справа) */
     .sidebar-agents {
         position: fixed;
-        top: 0;
+        top: 110px;
         right: 0;
         width: 280px;
-        height: 100vh;
+        height: calc(100vh - 110px);
         background: #f8f9fa;
         border-left: 1px solid #e9ecef;
         padding: 20px;
@@ -135,28 +145,15 @@
         transform: translateX(0);
     }
 
-    /* Мобильные элементы скрыты */
-    .mobile-header,
-    .mobile-tabs {
-        display: none !important;
-    }
-
-    /* Overlay для drawer */
-    .overlay {
-        display: none !important;
-    }
-
+    /* Overlay */
     .overlay.visible {
         display: block !important;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 150;
-        opacity: 1;
-        pointer-events: auto;
+    }
+
+    /* Input area */
+    .input-area {
+        border-top: 1px solid #e9ecef;
+        flex-shrink: 0;
     }
 }
 
@@ -165,13 +162,36 @@
     .container {
         display: flex;
         flex-direction: column;
-        height: 100vh;
+        height: 100dvh;  /* Dynamic viewport height для мобилки */
         border-radius: 0;
+    }
+
+    body {
+        padding: 0;
+        margin: 0;
+    }
+
+    /* Мобильные элементы показаны */
+    .mobile-header {
+        display: flex !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 60px;
+        z-index: 100;
+        background: #fff;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .mobile-tabs {
+        display: none !important; /* Заменены на .sidebar-layers */
     }
 
     /* Левая панель слоёв как горизонтальные tabs под header */
     .sidebar-layers {
-        display: flex;
+        display: flex !important;
         flex-direction: row;
         background: #fff;
         border-bottom: 1px solid #e9ecef;
@@ -192,8 +212,17 @@
         flex: 1;
         display: flex;
         flex-direction: column;
-        margin-top: 110px;
-        margin-bottom: 60px;
+        margin-top: 110px;  /* 60px header + 50px tabs */
+        margin-bottom: 0;   /* Drawer внизу, не занимает место */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 20px; /* Спейс перед drawer */
+    }
+
+    /* Input area - липнет к .main, не к bottom */
+    .input-area {
+        flex-shrink: 0;
+        border-top: 1px solid #e9ecef;
     }
 
     /* Боковая панель агентов как drawer (внизу экрана на мобилке) */
@@ -203,11 +232,12 @@
         left: 0;
         right: 0;
         width: 100%;
-        height: 60%;
+        max-height: 70vh;   /* Макс 70% экрана */
         background: #f8f9fa;
         border-top: 1px solid #e9ecef;
         padding: 20px;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
         z-index: 200;
         transform: translateY(100%);
         transition: transform 0.3s ease;
@@ -220,45 +250,66 @@
         transform: translateY(0);
     }
 
-    /* Мобильные элементы показаны */
-    .mobile-header {
-        display: flex !important;
-    }
-
-    .mobile-tabs {
-        display: none !important; /* Заменяны на .sidebar-layers */
-    }
-
-    /* Overlay */
+    /* Overlay для drawer */
     .overlay.visible {
         display: block !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 150;
+        opacity: 1;
+        pointer-events: auto;
     }
 
-    /* Chat area */
+    /* Chat area - правильный паддинг */
     .chat-area {
-        padding: 20px;
-        padding-top: 20px;
+        padding: 16px;
         padding-bottom: 20px;
+    }
+
+    /* Сообщения на мобилке */
+    .message {
+        max-width: 95%;
+    }
+
+    /* Секции по вертикали */
+    .content-section {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .section-label {
+        min-width: auto;
+        margin-bottom: 2px;
     }
 }
 
-/* ===== МОБИЛКА ГОРИЗОНТАЛЬНО (landscape) ===== */
+/* ===== MOBILE LANDSCAPE (max-width: 768px and landscape) ===== */
 @media (max-width: 768px) and (orientation: landscape) {
     .container {
-        height: 100vh;
+        height: 100dvh;
     }
 
-    .main {
-        margin-top: 50px;
-        margin-bottom: 0;
+    .mobile-header {
+        height: 50px;
     }
 
     .sidebar-layers {
-        height: 50px;
         top: 50px;
+        height: 40px;
     }
 
-    /* Меньше паддинга для экономии места */
+    .main {
+        margin-top: 90px;  /* 50px header + 40px tabs */
+    }
+
+    .sidebar-agents {
+        max-height: 50vh; /* Меньше на альбомной ориентации */
+    }
+
     .chat-area {
         padding: 12px;
     }
@@ -267,56 +318,3 @@
         padding: 8px;
     }
 }
-
-/* ===== LAYER ITEM (иконка слоя в левой панели) ===== */
-.layer-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 60px;
-    height: 60px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border-right: 2px solid transparent;
-    background: #f8f9fa;
-    color: #666;
-    font-size: 24px;
-    font-weight: 600;
-    position: relative;
-}
-
-.layer-item:hover {
-    background: #f0f2f5;
-}
-
-.layer-item.active {
-    background: #fff;
-    border-right-color: #667eea;
-    color: #667eea;
-}
-
-.layer-item-label {
-    font-size: 8px;
-    margin-top: 2px;
-    text-align: center;
-    max-width: 50px;
-    word-break: break-word;
-}
-
-/* ===== AGENTS SECTION (боковая панель агентов) ===== */
-.agents-section {
-    flex: 1;
-    overflow-y: auto;
-}
-
-.agents-section h3 {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #666;
-    letter-spacing: 0.5px;
-    margin-bottom: 12px;
-}
-
-/* Ensure existing components still work */
