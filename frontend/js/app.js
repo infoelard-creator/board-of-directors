@@ -24,6 +24,7 @@ import { sendTherapyMessage } from './therapy-api.js';
 import { addTherapistMessage } from './ui/therapy-chat.js';
 import { initTherapyPanel, updateInsightsList, updateHypothesesList } from './ui/therapy-panel.js';
 import { initBubblesContainer, showBubbles, updateBubblesState } from './ui/therapy-bubbles.js';
+import { initLayerManager } from './ui/layer-manager.js';
 
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 
@@ -39,6 +40,7 @@ async function init() {
     setupMobileNav();
     setupResponsiveListener();
     setupDebugMode();
+    initLayerManager();
     setupMessageInput();
 
     // 5. Therapy Setup: инициализируем панель и бабблы
