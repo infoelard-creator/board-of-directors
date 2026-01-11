@@ -140,7 +140,7 @@ export const THERAPY_SELECTORS = {
     therapyHypothesesList: '#therapyHypothesesList',
     therapyBubblesContainer: '#therapyBubblesContainer',
     therapyToggleBtn: '#therapyTogglePanelBtn',
-    therapyPanelOverlay: '#therapyPanelOverlay',
+    therapyPanelOverlay: '#overlay',  // Переиспользуем общий overlay
     therapyDesktopToggleBtn: '#therapyDesktopToggleBtn'
 };
 

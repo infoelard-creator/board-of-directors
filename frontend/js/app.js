@@ -5,7 +5,7 @@ import { agentKeys } from './config.js';
 import { appState } from './state.js';
 import { authenticateUser } from './utils/auth.js';
 import { logSafe } from './utils/helpers.js';
-import { renderAgentsUI, setupSidebarEvents, updateUISelections } from './ui/sidebar.js';
+import { renderAgentsUI, setupSidebarEvents, updateUISelections, setupDrawerCloseHandlers } from './ui/sidebar.js';
 import { setupMobileNav, setupResponsiveListener } from './ui/mobile.js';
 import { setupDebugMode, logDebugMetadata } from './ui/debug.js';
 import {
@@ -40,6 +40,7 @@ async function init() {
     setupMobileNav();
     setupResponsiveListener();
     setupDebugMode();
+    setupDrawerCloseHandlers();
     initLayerManager();
     setupMessageInput();
 

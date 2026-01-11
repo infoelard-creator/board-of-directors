@@ -3,6 +3,7 @@
 import { DOM_SELECTORS, CSS_CLASSES, agents, agentKeys } from '../config.js';
 import { appState } from '../state.js';
 import { logSafe } from '../utils/helpers.js';
+import { closeTherapyPanel, toggleTherapyPanel } from "./therapy-swipe.js";
 
 /**
  * Рендерит список агентов в sidebar (desktop) и mobile tabs
@@ -130,4 +131,37 @@ export function closeSidebar() {
     }
 }
 
-console.log('✅ Sidebar module loaded');
+
+/**
+ * Закрыть все drawer'ы (sidebar-agents и therapy-panel)
+ */
+export function closeAllDrawers() {
+    closeSidebar();
+    closeTherapyPanel();
+}
+
+
+/**
+ * Обработчик для ESC и клика на overlay
+ */
+export function setupDrawerCloseHandlers() {
+    const overlay = document.querySelector(DOM_SELECTORS.overlay);
+    
+    // ESC - закрыть все drawer'ы
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            closeAllDrawers();
+        }
+    });
+    
+    // Клик на overlay - закрыть все drawer'ы
+    if (overlay) {
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) {
+                closeAllDrawers();
+            }
+        });
+    }
+}
+
+console.log('✅ Sidebar module loaded with drawer handlers');

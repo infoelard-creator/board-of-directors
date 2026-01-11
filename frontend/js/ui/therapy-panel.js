@@ -27,7 +27,7 @@ export function initTherapyPanel() {
         }
         
         // Создаем overlay (для мобилки)
-        createTherapyOverlay();
+        // createTherapyOverlay(); // Overlay already managed by sidebar.js
         
         // Создаем панель
         panel = document.createElement('div');
